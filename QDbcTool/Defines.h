@@ -16,4 +16,10 @@ enum Threads
     MAX_THREAD
 };
 
+enum BarOp
+{
+    BAR_STEP,
+    BAR_SIZE
+};
+
 #endif

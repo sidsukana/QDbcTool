@@ -19,7 +19,7 @@ class DTForm : public QMainWindow, public Ui::DTFormUI
         ~DTForm();
 
         void GenerateTable();
-        char GetColumnFormat(quint32 field);
+        QChar GetColumnFormat(quint32 field);
 
         void ThreadBegin(quint8 id);
         void ThreadSet(quint8 id) { ThreadSemaphore[id] = true; }

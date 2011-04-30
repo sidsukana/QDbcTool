@@ -48,15 +48,15 @@ void DTForm::SlotOpenFile()
     ThreadBegin(THREAD_OPENFILE);
 }
 
-char DTForm::GetColumnFormat(quint32 field)
+QChar DTForm::GetColumnFormat(quint32 field)
 {
     // debug Spell.dbc
-    char* format = "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiifiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiffffffiiiiiiiiiiiiiiiiiiiiifffiiiiiiiiiiiifffiiiiissssssssissssssssissssssssissssssssiiiiiiiiiiiffffiii";
-    for (quint32 i = 0; i < strlen(format); i++)
-        if (i == field)
-            return format[i];
+    QString format = QString("iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiifiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiffffffiiiiiiiiiiiiiiiiiiiiifffiiiiiiiiiiiifffiiiiissssssssissssssssissssssssissssssssiiiiiiiiiiiffffiii");
+    
+    if (!format.isEmpty())
+        return format.at(field);
 
-    return '0';
+    return QChar();
 }
 
 void DTForm::GenerateTable()
@@ -87,14 +87,20 @@ void DTForm::GenerateTable()
     quint32 strBegin = m_recordSize * m_recordCount + 20;
     QByteArray bytes;
 
+    quint32 step = 0;
+
+    QApplication::postEvent(this, new ProgressBar(m_recordSize * m_recordCount, BAR_SIZE));
+    QApplication::postEvent(this, new ProgressBar(step, BAR_STEP));
+
     for (quint32 i = 0; i < m_recordCount; i++)
     {
         for (quint32 j = 0; j < m_fieldCount; j++)
         {
-            switch (GetColumnFormat(j))
+            switch (GetColumnFormat(j).toAscii())
             {
                 case 'i':
                 {
+                    step++;
                     file.seek(offset);
                     bytes = file.read(sizeof(quint32));
                     quint32 value = *reinterpret_cast<quint32*>(bytes.data());
@@ -102,10 +108,12 @@ void DTForm::GenerateTable()
                     QModelIndex index = model->index(i, j);
                     model->setData(index, data, Qt::EditRole);
                     offset += sizeof(quint32);
+                    QApplication::postEvent(this, new ProgressBar(step, BAR_STEP));
                 }
                 break;
                 case 'f':
                 {
+                    step++;
                     file.seek(offset);
                     bytes = file.read(sizeof(float));
                     float value = *reinterpret_cast<float*>(bytes.data());
@@ -113,10 +121,12 @@ void DTForm::GenerateTable()
                     QModelIndex index = model->index(i, j);
                     model->setData(index, data, Qt::EditRole);
                     offset += sizeof(float);
+                    QApplication::postEvent(this, new ProgressBar(step, BAR_STEP));
                 }
                 break;
                 case 's':
                 {
+                    step++;
                     file.seek(offset);
                     bytes = file.read(sizeof(quint32));
                     quint32 value = *reinterpret_cast<quint32*>(bytes.data());
@@ -145,6 +155,7 @@ void DTForm::GenerateTable()
                             QModelIndex index = model->index(i, j);
                             model->setData(index, data, Qt::EditRole);
                             offset += sizeof(char*);
+                            QApplication::postEvent(this, new ProgressBar(step, BAR_STEP));
                         }
                         else
                         {
@@ -152,6 +163,7 @@ void DTForm::GenerateTable()
                             QModelIndex index = model->index(i, j);
                             model->setData(index, data, Qt::EditRole);
                             offset += sizeof(char*);
+                            QApplication::postEvent(this, new ProgressBar(step, BAR_STEP));
                         }
                     }
                     else
@@ -165,6 +177,7 @@ void DTForm::GenerateTable()
                             QModelIndex index = model->index(i, j);
                             model->setData(index, data, Qt::EditRole);
                             offset += sizeof(char*);
+                            QApplication::postEvent(this, new ProgressBar(step, BAR_STEP));
                         }
                         else
                         {
@@ -172,12 +185,14 @@ void DTForm::GenerateTable()
                             QModelIndex index = model->index(i, j);
                             model->setData(index, data, Qt::EditRole);
                             offset += sizeof(char*);
+                            QApplication::postEvent(this, new ProgressBar(step, BAR_STEP));
                         }
                     }
                 }
                 break;
                 default:
                 {
+                    step++;
                     file.seek(offset);
                     bytes = file.read(sizeof(quint32));
                     quint32 value = *reinterpret_cast<quint32*>(bytes.data());
@@ -185,6 +200,7 @@ void DTForm::GenerateTable()
                     QModelIndex index = model->index(i, j);
                     model->setData(index, data, Qt::EditRole);
                     offset += sizeof(quint32);
+                    QApplication::postEvent(this, new ProgressBar(step, BAR_STEP));
                 }
                 break;
             }
@@ -202,6 +218,26 @@ bool DTForm::event(QEvent *ev)
 {
     switch (ev->type())
     {
+        case ProgressBar::TypeId:
+        {
+            ProgressBar* bar = (ProgressBar*)ev;
+            
+            switch (bar->GetId())
+            {
+                case BAR_STEP:
+                {
+                    progressBar->setValue(bar->GetStep());
+                    return true;
+                }
+                case BAR_SIZE:
+                {
+                    progressBar->setMaximum(bar->GetSize());
+                    return true;
+                }
+            }
+
+            break;
+        }
         case SendModel::TypeId:
         {
             SendModel* m_ev = (SendModel*)ev;
