@@ -1,8 +1,8 @@
 #include "TObject.h"
 #include "Defines.h"
 
-TObject::TObject(quint8 id, DTForm* form)
-    : m_id(id), m_form(form)
+TObject::TObject(quint8 id, DTObject* dbc)
+    : m_id(id), m_dbc(dbc)
 {
     moveToThread(this);
 }
@@ -16,7 +16,7 @@ void TObject::run()
     switch(m_id)
     {
         case THREAD_OPENFILE:
-            m_form->GenerateTable();
+            m_dbc->Load();
             break;
         default:
             break;

@@ -7,9 +7,11 @@
 #include "Defines.h"
 #include "TObject.h"
 #include "DTEvent.h"
+#include "DTObject.h"
 
 class TObject;
 class DBCTableModel;
+class DTObject;
 class DTForm : public QMainWindow, public Ui::DTFormUI
 {
     Q_OBJECT
@@ -18,35 +20,14 @@ class DTForm : public QMainWindow, public Ui::DTFormUI
         DTForm(QWidget *parent = 0);
         ~DTForm();
 
-        void GenerateTable();
-        QChar GetColumnFormat(quint32 field);
-
-        void ThreadBegin(quint8 id);
-        void ThreadSet(quint8 id) { ThreadSemaphore[id] = true; }
-        void ThreadUnset(quint8 id) { ThreadSemaphore[id] = false; }
-        bool ThreadExist(quint8 id) { return ThreadSemaphore[id]; }
-
         bool event(QEvent *ev);
-
-        quint32 GetRecordCount() { return m_recordCount; }
-        quint32 GetFieldCount() { return m_fieldCount; }
-        quint32 GetRecordSize() { return m_recordSize; }
-        quint32 GetStringSize() { return m_stringSize; }
     
     public slots:
         void SlotOpenFile();
 
 private:
     Ui::DTFormUI ui;
-
-    quint32 m_recordCount;
-    quint32 m_fieldCount;
-    quint32 m_recordSize;
-    quint32 m_stringSize;
-
-    DBCTableModel* model;
-    QString filename;
-    bool ThreadSemaphore[MAX_THREAD];
+    DTObject* dbc;
 };
 
 class DBCTableModel : public QAbstractTableModel
@@ -54,8 +35,8 @@ class DBCTableModel : public QAbstractTableModel
     Q_OBJECT
     
 public:
-    DBCTableModel(QObject *parent = 0, DTForm *form = NULL);
-    DBCTableModel(QMap<quint32, QMap<quint32, QString>> dataMap, QObject *parent = 0, DTForm *form = NULL);
+    DBCTableModel(QObject *parent = 0, DTObject *dbc = NULL);
+    DBCTableModel(QMap<quint32, QMap<quint32, QString>> dataMap, QObject *parent = 0, DTObject *dbc = NULL);
 
     int rowCount(const QModelIndex &parent) const;
     int columnCount(const QModelIndex &parent) const;
@@ -71,7 +52,7 @@ public:
 
 private:
     QMap<quint32, QMap<quint32, QString>> dataMap;
-    DTForm* m_form;
+    DTObject* m_dbc;
 };
 
 #endif // DTFORM_H

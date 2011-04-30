@@ -170,6 +170,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\DTObject.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\Main.cpp"
 				>
 			</File>
@@ -216,6 +220,10 @@
 						Outputs="&quot;.\GeneratedFiles\$(ConfigurationName)\moc_$(InputName).cpp&quot;"
 					/>
 				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\DTObject.h"
+				>
 			</File>
 			<File
 				RelativePath=".\TObject.h"
