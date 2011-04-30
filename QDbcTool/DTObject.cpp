@@ -33,6 +33,8 @@ void DTObject::ThreadBegin(quint8 id)
 QChar DTObject::GetColumnFormat(quint32 field)
 {
     // debug Spell.dbc
+    // iiiiiiiiiiiiiii SkillLineAbility.dbc
+    // iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiifiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiffffffiiiiiiiiiiiiiiiiiiiiifffiiiiiiiiiiiifffiiiiissssssssissssssssissssssssissssssssiiiiiiiiiiiffffiii
     QString format = QString("iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiifiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiffffffiiiiiiiiiiiiiiiiiiiiifffiiiiiiiiiiiifffiiiiissssssssissssssssissssssssissssssssiiiiiiiiiiiffffiii");
     
     if (!format.isEmpty())
@@ -74,7 +76,7 @@ void DTObject::Load()
 
     quint32 step = 0;
 
-    QApplication::postEvent(m_form, new ProgressBar(m_recordSize * m_recordCount, BAR_SIZE));
+    QApplication::postEvent(m_form, new ProgressBar(m_fieldCount * m_recordCount, BAR_SIZE));
     QApplication::postEvent(m_form, new ProgressBar(step, BAR_STEP));
 
     for (quint32 i = 0; i < m_recordCount; i++)

@@ -65,12 +65,15 @@ bool DTForm::event(QEvent *ev)
 DBCTableModel::DBCTableModel(QObject *parent, DTObject *dbc)
     : QAbstractTableModel(parent), m_dbc(dbc)
 {
+    m_dbcMap.clear();
+    m_fieldMap.clear();
 }
 
-DBCTableModel::DBCTableModel(QMap<quint32, QMap<quint32, QString>> data, QObject *parent, DTObject *dbc)
+DBCTableModel::DBCTableModel(DbcMap dbcMap, QObject *parent, DTObject *dbc)
     : QAbstractTableModel(parent), m_dbc(dbc)
 {
-    dataMap = data;
+    m_dbcMap = dbcMap;
+    m_fieldMap.clear();
 }
 
 int DBCTableModel::rowCount(const QModelIndex &parent) const
@@ -90,14 +93,14 @@ QVariant DBCTableModel::data(const QModelIndex &index, int role) const
     if (!index.isValid())
         return QVariant();
 
-    if (index.row() >= dataMap.size() || index.row() < 0)
+    if (index.row() >= m_dbcMap.size() || index.row() < 0)
         return QVariant();
 
     if (role == Qt::DisplayRole)
     {
-        QMap<quint32, QString> fmap = *dataMap.find(index.row());
+        FieldMap fmap = m_dbcMap[index.row()];
 
-        return fmap.find(index.column()).value();
+        return fmap[index.column()];
     }
     return QVariant();
 }
@@ -127,13 +130,13 @@ bool DBCTableModel::insertRows(int position, int rows, const QModelIndex &index)
     Q_UNUSED(index);
     beginInsertRows(QModelIndex(), position, position+rows-1);
 
-    QMap<quint32, QString> fmap;
     for (quint32 row = 0; row < rows; row++)
     {
+        m_fieldMap.clear();
         for (quint32 col = 0; col < m_dbc->GetFieldCount(); col++)
-            fmap.insert(col, " ");
+            m_fieldMap.insert(col, " ");
 
-        dataMap.insert(row, fmap);
+        m_dbcMap.insert(row, m_fieldMap);
     }
 
     endInsertRows();
@@ -171,12 +174,10 @@ bool DBCTableModel::setData(const QModelIndex &index, const QVariant &value, int
         quint32 row = index.row();
         quint32 column = index.column();
 
-        QMap<quint32, QString> fmap = *dataMap.find(row);
+        m_fieldMap = m_dbcMap[row];
+        m_fieldMap[column] = value.toString();
 
-        fmap.remove(column);
-        fmap.insert(column, value.toString());
-        dataMap.remove(row);
-        dataMap.insert(row, fmap);
+        m_dbcMap[row] = m_fieldMap;
 
         emit(dataChanged(index, index));
 
@@ -186,9 +187,9 @@ bool DBCTableModel::setData(const QModelIndex &index, const QVariant &value, int
     return false;
 }
 
-QMap< quint32, QMap<quint32, QString> > DBCTableModel::getMap()
+DbcMap DBCTableModel::getMap()
 {
-    return dataMap;
+    return m_dbcMap;
 }
 
 Qt::ItemFlags DBCTableModel::flags(const QModelIndex &index) const

@@ -30,13 +30,16 @@ private:
     DTObject* dbc;
 };
 
+typedef QMap<quint32, QString> FieldMap;
+typedef QMap<quint32, FieldMap> DbcMap;
+
 class DBCTableModel : public QAbstractTableModel
 {
     Q_OBJECT
     
 public:
     DBCTableModel(QObject *parent = 0, DTObject *dbc = NULL);
-    DBCTableModel(QMap<quint32, QMap<quint32, QString>> dataMap, QObject *parent = 0, DTObject *dbc = NULL);
+    DBCTableModel(DbcMap dbcMap, QObject *parent = 0, DTObject *dbc = NULL);
 
     int rowCount(const QModelIndex &parent) const;
     int columnCount(const QModelIndex &parent) const;
@@ -48,10 +51,13 @@ public:
     //bool insertColumns(int position, int columns, const QModelIndex &index = QModelIndex());
     bool removeRows(int position, int rows, const QModelIndex &index = QModelIndex());
     //bool removeColumns(int position, int columns, const QModelIndex &index = QModelIndex());
-    QMap<quint32, QMap<quint32, QString>> getMap();
+    DbcMap getMap();
 
 private:
-    QMap<quint32, QMap<quint32, QString>> dataMap;
+
+    DbcMap m_dbcMap;
+    FieldMap m_fieldMap;
+
     DTObject* m_dbc;
 };
 
