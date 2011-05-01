@@ -5,7 +5,10 @@
 #include "DTEvent.h"
 #include "TObject.h"
 
+#include <QtCore/QSettings>
+
 class DTForm;
+class DBCTableModel;
 
 class DTObject
 {
@@ -22,6 +25,8 @@ class DTObject
         quint32 GetRecordSize() { return m_recordSize; }
         quint32 GetStringSize() { return m_stringSize; }
         QString GetFileName() { return m_fileName; }
+        void SetFileName(QString name) { m_fileName = name; }
+        void LoadConfig();
 
         void ThreadBegin(quint8 id);
         void ThreadSet(quint8 id) { ThreadSemaphore[id] = true; }
@@ -36,6 +41,10 @@ class DTObject
 
         DTForm* m_form;
         QString m_fileName;
+        QSettings* config;
+        QString m_format;
+
+        DBCTableModel* model;
 
         bool ThreadSemaphore[MAX_THREAD];
 };

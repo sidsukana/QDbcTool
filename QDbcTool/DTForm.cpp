@@ -1,8 +1,7 @@
 #include "DTForm.h"
-
-#include <QtCore/QFile>
 #include <QtCore/QDataStream>
 #include <QtGui/QTableView>
+#include <QtGui/QFileDialog>
 
 DTForm::DTForm(QWidget *parent)
     : QMainWindow(parent)
@@ -20,6 +19,8 @@ DTForm::~DTForm()
 
 void DTForm::SlotOpenFile()
 {
+    dbc->SetFileName(QFileDialog::getOpenFileName());
+    dbc->LoadConfig();
     dbc->ThreadBegin(THREAD_OPENFILE);
 }
 

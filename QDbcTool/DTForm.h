@@ -52,6 +52,7 @@ public:
     bool removeRows(int position, int rows, const QModelIndex &index = QModelIndex());
     //bool removeColumns(int position, int columns, const QModelIndex &index = QModelIndex());
     DbcMap getMap();
+    void clear() { reset(); }
 
 private:
 

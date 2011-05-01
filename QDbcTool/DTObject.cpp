@@ -1,7 +1,7 @@
 #include "DTObject.h"
 #include "Defines.h"
 
-#include <QtGui/QFileDialog>
+#include <QtCore/QFile>
 
 DTObject::DTObject(DTForm *form)
     : m_form(form)
@@ -12,6 +12,11 @@ DTObject::DTObject(DTForm *form)
     m_stringSize = 0;
 
     m_fileName = "";
+
+    model = new DBCTableModel(m_form, this);
+    config = new QSettings("config.ini", QSettings::IniFormat, m_form);
+
+    LoadConfig();
 
     for (quint8 i = 0; i < MAX_THREAD; i++)
         ThreadSemaphore[i] = false;
@@ -30,15 +35,19 @@ void DTObject::ThreadBegin(quint8 id)
     }
 }
 
-QChar DTObject::GetColumnFormat(quint32 field)
+void DTObject::LoadConfig()
 {
+    config->sync();
     // debug Spell.dbc
     // iiiiiiiiiiiiiii SkillLineAbility.dbc
     // iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiifiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiffffffiiiiiiiiiiiiiiiiiiiiifffiiiiiiiiiiiifffiiiiissssssssissssssssissssssssissssssssiiiiiiiiiiiffffiii
-    QString format = QString("iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiifiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiffffffiiiiiiiiiiiiiiiiiiiiifffiiiiiiiiiiiifffiiiiissssssssissssssssissssssssissssssssiiiiiiiiiiiffffiii");
-    
-    if (!format.isEmpty())
-        return format.at(field);
+    m_format = config->value("1.12.x/Format", "None").toString();
+}
+
+QChar DTObject::GetColumnFormat(quint32 field)
+{
+    if (!m_format.isEmpty())
+        return m_format.at(field);
 
     return QChar();
 }
@@ -49,11 +58,13 @@ void DTObject::Load()
 
     quint32 header;
 
-    m_fileName = QFileDialog::getOpenFileName();
     QFile file(m_fileName);
         
     if (!file.open(QIODevice::ReadOnly))
+    {
+        ThreadUnset(THREAD_OPENFILE);
         return;
+    }
 
     QDataStream stream(&file);
     //stream.setByteOrder(QDataStream::ByteOrder(QSW_ENDIAN));
@@ -63,10 +74,12 @@ void DTObject::Load()
 
     // Check 'WDBC'
     if (header != 0x43424457)
-        return; 
+    {
+        ThreadUnset(THREAD_OPENFILE);
+        return;
+    }
 
-    DBCTableModel* model = new DBCTableModel(m_form, this);
-
+    model->clear();
     model->insertRows(0, m_recordCount);
     model->insertColumns(0, m_fieldCount);
 
@@ -124,25 +137,48 @@ void DTObject::Load()
                         {
                             quint32 value2 = 0;
 
+                            quint32 safeOffset = i;
+
                             quint32 nextOffset = offset;
 
                             while (value2 == 0)
                             {
-                                nextOffset += m_recordSize;
-                                
-                                file.seek(nextOffset);
-                                bytes = file.read(sizeof(quint32));
-                                value2 = *reinterpret_cast<quint32*>(bytes.data());
+                                safeOffset++;
+
+                                if (safeOffset < m_recordCount)
+                                {
+                                    nextOffset += m_recordSize;
+                                    
+                                    file.seek(nextOffset);
+                                    bytes = file.read(sizeof(quint32));
+                                    value2 = *reinterpret_cast<quint32*>(bytes.data());
+                                }
+                                else
+                                {
+                                    value2 = 0;
+                                    break;
+                                }
                             }
 
-                            file.seek(strBegin + value);
-                            bytes = file.read(value2 - 2);
+                            if (value2 != 0)
+                            {
+                                file.seek(strBegin + value);
+                                bytes = file.read(value2 - 2);
 
-                            QString data = QString("%0").arg(bytes.data());
-                            QModelIndex index = model->index(i, j);
-                            model->setData(index, data, Qt::EditRole);
-                            offset += sizeof(char*);
-                            QApplication::postEvent(m_form, new ProgressBar(step, BAR_STEP));
+                                QString data = QString("%0").arg(bytes.data());
+                                QModelIndex index = model->index(i, j);
+                                model->setData(index, data, Qt::EditRole);
+                                offset += sizeof(char*);
+                                QApplication::postEvent(m_form, new ProgressBar(step, BAR_STEP));
+                            }
+                            else
+                            {
+                                QString data = QString("");
+                                QModelIndex index = model->index(i, j);
+                                model->setData(index, data, Qt::EditRole);
+                                offset += sizeof(char*);
+                                QApplication::postEvent(m_form, new ProgressBar(step, BAR_STEP));
+                            }
                         }
                         else
                         {
