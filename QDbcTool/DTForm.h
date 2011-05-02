@@ -30,8 +30,7 @@ private:
     DTObject* dbc;
 };
 
-typedef QMap<quint32, QString> FieldMap;
-typedef QMap<quint32, FieldMap> DbcMap;
+typedef QList<QStringList> DBCList;
 
 class DBCTableModel : public QAbstractTableModel
 {
@@ -39,25 +38,24 @@ class DBCTableModel : public QAbstractTableModel
     
 public:
     DBCTableModel(QObject *parent = 0, DTObject *dbc = NULL);
-    DBCTableModel(DbcMap dbcMap, QObject *parent = 0, DTObject *dbc = NULL);
+    DBCTableModel(DBCList dbcList, QObject *parent = 0, DTObject *dbc = NULL);
 
     int rowCount(const QModelIndex &parent) const;
     int columnCount(const QModelIndex &parent) const;
     QVariant data(const QModelIndex &index, int role) const;
     //QVariant headerData(int section, Qt::Orientation orientation, int role) const;
     Qt::ItemFlags flags(const QModelIndex &index) const;
-    bool setData(const QModelIndex &index, const QVariant &value, int role=Qt::EditRole);
-    bool insertRows(int position, int rows, const QModelIndex &index = QModelIndex());
-    //bool insertColumns(int position, int columns, const QModelIndex &index = QModelIndex());
-    bool removeRows(int position, int rows, const QModelIndex &index = QModelIndex());
-    //bool removeColumns(int position, int columns, const QModelIndex &index = QModelIndex());
-    DbcMap getMap();
-    void clear() { reset(); }
+    void insertRecord(QStringList strl);
+    DBCList getDbcList();
+    void clear()
+    {
+        reset();
+        m_dbcList.clear();
+    }
 
 private:
 
-    DbcMap m_dbcMap;
-    FieldMap m_fieldMap;
+    DBCList m_dbcList;
 
     DTObject* m_dbc;
 };

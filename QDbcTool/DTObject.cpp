@@ -80,53 +80,45 @@ void DTObject::Load()
     }
 
     model->clear();
-    model->insertRows(0, m_recordCount);
-    model->insertColumns(0, m_fieldCount);
+
+    QByteArray bytes;
+    QStringList strl;
 
     quint32 offset = 20;
     quint32 strBegin = m_recordSize * m_recordCount + 20;
-    QByteArray bytes;
+    
 
-    quint32 step = 0;
-
-    QApplication::postEvent(m_form, new ProgressBar(m_fieldCount * m_recordCount, BAR_SIZE));
-    QApplication::postEvent(m_form, new ProgressBar(step, BAR_STEP));
+    QApplication::postEvent(m_form, new ProgressBar(m_recordCount-1, BAR_SIZE));
 
     for (quint32 i = 0; i < m_recordCount; i++)
     {
+        strl.clear();
         for (quint32 j = 0; j < m_fieldCount; j++)
         {
             switch (GetColumnFormat(j).toAscii())
             {
                 case 'i':
                 {
-                    step++;
                     file.seek(offset);
                     bytes = file.read(sizeof(quint32));
                     quint32 value = *reinterpret_cast<quint32*>(bytes.data());
                     QString data = QString("%0").arg(value);
-                    QModelIndex index = model->index(i, j);
-                    model->setData(index, data, Qt::EditRole);
+                    strl.append(data);
                     offset += sizeof(quint32);
-                    QApplication::postEvent(m_form, new ProgressBar(step, BAR_STEP));
                 }
                 break;
                 case 'f':
                 {
-                    step++;
                     file.seek(offset);
                     bytes = file.read(sizeof(float));
                     float value = *reinterpret_cast<float*>(bytes.data());
                     QString data = QString("%0").arg(value);
-                    QModelIndex index = model->index(i, j);
-                    model->setData(index, data, Qt::EditRole);
+                    strl.append(data);
                     offset += sizeof(float);
-                    QApplication::postEvent(m_form, new ProgressBar(step, BAR_STEP));
                 }
                 break;
                 case 's':
                 {
-                    step++;
                     file.seek(offset);
                     bytes = file.read(sizeof(quint32));
                     quint32 value = *reinterpret_cast<quint32*>(bytes.data());
@@ -148,7 +140,7 @@ void DTObject::Load()
                                 if (safeOffset < m_recordCount)
                                 {
                                     nextOffset += m_recordSize;
-                                    
+
                                     file.seek(nextOffset);
                                     bytes = file.read(sizeof(quint32));
                                     value2 = *reinterpret_cast<quint32*>(bytes.data());
@@ -164,29 +156,22 @@ void DTObject::Load()
                             {
                                 file.seek(strBegin + value);
                                 bytes = file.read(value2 - 2);
-
                                 QString data = QString("%0").arg(bytes.data());
-                                QModelIndex index = model->index(i, j);
-                                model->setData(index, data, Qt::EditRole);
+                                strl.append(data);
                                 offset += sizeof(char*);
-                                QApplication::postEvent(m_form, new ProgressBar(step, BAR_STEP));
                             }
                             else
                             {
                                 QString data = QString("");
-                                QModelIndex index = model->index(i, j);
-                                model->setData(index, data, Qt::EditRole);
                                 offset += sizeof(char*);
-                                QApplication::postEvent(m_form, new ProgressBar(step, BAR_STEP));
+                                strl.append(data);
                             }
                         }
                         else
                         {
                             QString data = QString("");
-                            QModelIndex index = model->index(i, j);
-                            model->setData(index, data, Qt::EditRole);
                             offset += sizeof(char*);
-                            QApplication::postEvent(m_form, new ProgressBar(step, BAR_STEP));
+                            strl.append(data);
                         }
                     }
                     else
@@ -195,39 +180,33 @@ void DTObject::Load()
                         {
                             file.seek(strBegin + value);
                             bytes = file.read(m_stringSize - value - 1);
-
                             QString data = QString("%0").arg(bytes.data());
-                            QModelIndex index = model->index(i, j);
-                            model->setData(index, data, Qt::EditRole);
+                            strl.append(data);
                             offset += sizeof(char*);
-                            QApplication::postEvent(m_form, new ProgressBar(step, BAR_STEP));
                         }
                         else
                         {
                             QString data = QString("");
-                            QModelIndex index = model->index(i, j);
-                            model->setData(index, data, Qt::EditRole);
                             offset += sizeof(char*);
-                            QApplication::postEvent(m_form, new ProgressBar(step, BAR_STEP));
+                            strl.append(data);
                         }
                     }
                 }
                 break;
                 default:
                 {
-                    step++;
                     file.seek(offset);
                     bytes = file.read(sizeof(quint32));
                     quint32 value = *reinterpret_cast<quint32*>(bytes.data());
                     QString data = QString("%0").arg(value);
-                    QModelIndex index = model->index(i, j);
-                    model->setData(index, data, Qt::EditRole);
+                    strl.append(data);
                     offset += sizeof(quint32);
-                    QApplication::postEvent(m_form, new ProgressBar(step, BAR_STEP));
                 }
                 break;
             }
         }
+        model->insertRecord(strl);
+        QApplication::postEvent(m_form, new ProgressBar(i, BAR_STEP));
     }
 
     QApplication::postEvent(m_form, new SendModel(m_form, model));
