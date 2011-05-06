@@ -2,6 +2,7 @@
 #include "Defines.h"
 
 #include <QtCore/QFile>
+#include <QtCore/QTime>
 
 DTObject::DTObject(DTForm *form)
     : m_form(form)
@@ -38,9 +39,6 @@ void DTObject::ThreadBegin(quint8 id)
 void DTObject::LoadConfig()
 {
     config->sync();
-    // debug Spell.dbc
-    // iiiiiiiiiiiiiii SkillLineAbility.dbc
-    // iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiifiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiffffffiiiiiiiiiiiiiiiiiiiiifffiiiiiiiiiiiifffiiiiissssssssissssssssissssssssissssssssiiiiiiiiiiiffffiii
     m_format = config->value("1.12.x/Format", "None").toString();
 }
 
@@ -56,7 +54,11 @@ void DTObject::Load()
 {
     ThreadSet(THREAD_OPENFILE);
 
-    quint32 header;
+    // Timer
+    //QTime m_time;
+    //m_time.start();
+
+    quint32 m_header;
 
     QFile file(m_fileName);
         
@@ -66,14 +68,18 @@ void DTObject::Load()
         return;
     }
 
-    QDataStream stream(&file);
-    //stream.setByteOrder(QDataStream::ByteOrder(QSW_ENDIAN));
-    stream.setByteOrder(QDataStream::ByteOrder(1));
+    // Head bytes
+    QByteArray head;
+    head = file.read(20);
 
-    stream >> header >> m_recordCount >> m_fieldCount >> m_recordSize >> m_stringSize;
+    m_header = *reinterpret_cast<quint32*>(head.mid(0, 4).data());
+    m_recordCount = *reinterpret_cast<quint32*>(head.mid(4, 4).data());
+    m_fieldCount = *reinterpret_cast<quint32*>(head.mid(8, 4).data());
+    m_recordSize = *reinterpret_cast<quint32*>(head.mid(12, 4).data());
+    m_stringSize = *reinterpret_cast<quint32*>(head.mid(16, 4).data());
 
     // Check 'WDBC'
-    if (header != 0x43424457)
+    if (m_header != 0x43424457)
     {
         ThreadUnset(THREAD_OPENFILE);
         return;
@@ -81,14 +87,22 @@ void DTObject::Load()
 
     model->clear();
 
-    QByteArray bytes;
+    QByteArray dataBytes;
+    QByteArray stringBytes;
+
     QStringList strl;
 
-    quint32 offset = 20;
-    quint32 strBegin = m_recordSize * m_recordCount + 20;
-    
+    quint32 offset = 0;
 
-    QApplication::postEvent(m_form, new ProgressBar(m_recordCount-1, BAR_SIZE));
+    // Data bytes
+    file.seek(20);
+    dataBytes = file.read(m_recordSize * m_recordCount);
+
+    // String bytes
+    file.seek(20 + m_recordSize * m_recordCount);
+    stringBytes = file.read(m_stringSize);
+
+    QApplication::postEvent(m_form, new ProgressBar(m_recordCount - 1, BAR_SIZE));
 
     for (quint32 i = 0; i < m_recordCount; i++)
     {
@@ -99,108 +113,55 @@ void DTObject::Load()
             {
                 case 'i':
                 {
-                    file.seek(offset);
-                    bytes = file.read(sizeof(quint32));
-                    quint32 value = *reinterpret_cast<quint32*>(bytes.data());
+                    quint32 value = *reinterpret_cast<quint32*>(dataBytes.mid(offset, 4).data());
                     QString data = QString("%0").arg(value);
                     strl.append(data);
-                    offset += sizeof(quint32);
+                    offset += 4;
                 }
                 break;
                 case 'f':
                 {
-                    file.seek(offset);
-                    bytes = file.read(sizeof(float));
-                    float value = *reinterpret_cast<float*>(bytes.data());
+                    quint32 value = *reinterpret_cast<float*>(dataBytes.mid(offset, 4).data());
                     QString data = QString("%0").arg(value);
                     strl.append(data);
-                    offset += sizeof(float);
+                    offset += 4;
                 }
                 break;
                 case 's':
                 {
-                    file.seek(offset);
-                    bytes = file.read(sizeof(quint32));
-                    quint32 value = *reinterpret_cast<quint32*>(bytes.data());
+                    quint32 value = *reinterpret_cast<quint32*>(dataBytes.mid(offset, 4).data());
 
-                    if (i < m_recordCount-1)
+                    if (value)
                     {
-                        if (value != 0)
+                        char* ch = new char[1];
+
+                        quint32 length = 0;
+
+                        while (ch[0] != 0)
                         {
-                            quint32 value2 = 0;
-
-                            quint32 safeOffset = i;
-
-                            quint32 nextOffset = offset;
-
-                            while (value2 == 0)
-                            {
-                                safeOffset++;
-
-                                if (safeOffset < m_recordCount)
-                                {
-                                    nextOffset += m_recordSize;
-
-                                    file.seek(nextOffset);
-                                    bytes = file.read(sizeof(quint32));
-                                    value2 = *reinterpret_cast<quint32*>(bytes.data());
-                                }
-                                else
-                                {
-                                    value2 = 0;
-                                    break;
-                                }
-                            }
-
-                            if (value2 != 0)
-                            {
-                                file.seek(strBegin + value);
-                                bytes = file.read(value2 - 2);
-                                QString data = QString("%0").arg(bytes.data());
-                                strl.append(data);
-                                offset += sizeof(char*);
-                            }
-                            else
-                            {
-                                QString data = QString("");
-                                offset += sizeof(char*);
-                                strl.append(data);
-                            }
+                            ch[0] = stringBytes.at(value+length);
+                            if (ch[0] != 0)
+                                length++;
                         }
-                        else
-                        {
-                            QString data = QString("");
-                            offset += sizeof(char*);
-                            strl.append(data);
-                        }
+
+                        QString data = QString("%0").arg(stringBytes.mid(value, length).data());
+                        strl.append(data);
                     }
                     else
                     {
-                        if (value != 0)
-                        {
-                            file.seek(strBegin + value);
-                            bytes = file.read(m_stringSize - value - 1);
-                            QString data = QString("%0").arg(bytes.data());
-                            strl.append(data);
-                            offset += sizeof(char*);
-                        }
-                        else
-                        {
-                            QString data = QString("");
-                            offset += sizeof(char*);
-                            strl.append(data);
-                        }
+                        QString data = QString("");
+                        strl.append(data);
                     }
+
+                    offset += 4;
                 }
                 break;
                 default:
                 {
-                    file.seek(offset);
-                    bytes = file.read(sizeof(quint32));
-                    quint32 value = *reinterpret_cast<quint32*>(bytes.data());
+                    quint32 value = *reinterpret_cast<quint32*>(dataBytes.mid(offset, 4).data());
                     QString data = QString("%0").arg(value);
                     strl.append(data);
-                    offset += sizeof(quint32);
+                    offset += 4;
                 }
                 break;
             }
@@ -212,6 +173,8 @@ void DTObject::Load()
     QApplication::postEvent(m_form, new SendModel(m_form, model));
 
     file.close();
+
+    //QString stime(QString("Load time (ms): %0").arg(m_time.elapsed()));
 
     ThreadUnset(THREAD_OPENFILE);
 }
