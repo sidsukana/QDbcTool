@@ -2,8 +2,10 @@
 #define DTFORM_H
 
 #include <QtGui/QMainWindow>
+#include <QtGui/QDialog>
 #include <QtCore/QAbstractTableModel>
 #include "ui_DTForm.h"
+#include "ui_DTBuild.h"
 #include "Defines.h"
 #include "TObject.h"
 #include "DTEvent.h"
@@ -30,6 +32,19 @@ private:
     DTObject* dbc;
 };
 
+class DTBuild : public QDialog, public Ui::DTBuildUI
+{
+    Q_OBJECT
+
+    public:
+        DTBuild(QWidget *parent = 0, DTForm* form = NULL);
+        ~DTBuild();
+
+private:
+    Ui::DTBuildUI ui;
+    DTForm* m_form;
+};
+
 typedef QList<QStringList> DBCList;
 
 class DBCTableModel : public QAbstractTableModel
@@ -47,11 +62,7 @@ public:
     Qt::ItemFlags flags(const QModelIndex &index) const;
     void insertRecord(QStringList strl);
     DBCList getDbcList();
-    void clear()
-    {
-        reset();
-        m_dbcList.clear();
-    }
+    void clear();
 
 private:
 

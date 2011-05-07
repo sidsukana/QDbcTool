@@ -26,7 +26,10 @@ class DTObject
         quint32 GetStringSize() { return m_stringSize; }
         QString GetFileName() { return m_fileName; }
         void SetFileName(QString name) { m_fileName = name; }
+        void SetBuild(QString build) { m_build = build; }
         void LoadConfig();
+
+        QSettings* GetConfig() { return config; }
 
         void ThreadBegin(quint8 id);
         void ThreadSet(quint8 id) { ThreadSemaphore[id] = true; }
@@ -43,6 +46,7 @@ class DTObject
         QString m_fileName;
         QSettings* config;
         QString m_format;
+        QString m_build;
 
         DBCTableModel* model;
 

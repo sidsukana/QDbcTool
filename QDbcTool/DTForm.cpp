@@ -17,11 +17,31 @@ DTForm::~DTForm()
 {
 }
 
+DTBuild::DTBuild(QWidget *parent, DTForm* form)
+    : QDialog(parent), m_form(form)
+{
+    setupUi(this);
+}
+
+DTBuild::~DTBuild()
+{
+}
+
 void DTForm::SlotOpenFile()
 {
     dbc->SetFileName(QFileDialog::getOpenFileName());
-    dbc->LoadConfig();
-    dbc->ThreadBegin(THREAD_OPENFILE);
+
+    DTBuild* build = new DTBuild;
+    build->show();
+    build->comboBox->clear();
+    build->comboBox->addItems(dbc->GetConfig()->childGroups());
+
+    if (build->exec() == QDialog::Accepted)
+    {
+        dbc->SetBuild(build->comboBox->currentText());
+        dbc->LoadConfig();
+        dbc->ThreadBegin(THREAD_OPENFILE);
+    }
 }
 
 bool DTForm::event(QEvent *ev)
@@ -73,6 +93,13 @@ DBCTableModel::DBCTableModel(DBCList dbcList, QObject *parent, DTObject *dbc)
     : QAbstractTableModel(parent), m_dbc(dbc)
 {
     m_dbcList = dbcList;
+}
+
+void DBCTableModel::clear()
+{
+    beginResetModel();
+    m_dbcList.clear();
+    endResetModel();
 }
 
 int DBCTableModel::rowCount(const QModelIndex &parent) const

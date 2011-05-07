@@ -2,6 +2,7 @@
 #include "Defines.h"
 
 #include <QtCore/QFile>
+#include <QtCore/QFileInfo>
 #include <QtCore/QTime>
 
 DTObject::DTObject(DTForm *form)
@@ -13,6 +14,8 @@ DTObject::DTObject(DTForm *form)
     m_stringSize = 0;
 
     m_fileName = "";
+
+    m_build = "";
 
     model = new DBCTableModel(m_form, this);
     config = new QSettings("config.ini", QSettings::IniFormat, m_form);
@@ -39,7 +42,14 @@ void DTObject::ThreadBegin(quint8 id)
 void DTObject::LoadConfig()
 {
     config->sync();
-    m_format = config->value("1.12.x/Format", "None").toString();
+
+    if (!m_build.isEmpty())
+    {
+        QFileInfo finfo(m_fileName);
+
+        QString key = m_build + "/" + finfo.fileName();
+        m_format = config->value(key + "/Format", "None").toString();
+    }
 }
 
 QChar DTObject::GetColumnFormat(quint32 field)
@@ -58,11 +68,11 @@ void DTObject::Load()
     //QTime m_time;
     //m_time.start();
 
-    quint32 m_header;
+    QFile m_file(m_fileName);
 
-    QFile file(m_fileName);
+    quint32 m_header;
         
-    if (!file.open(QIODevice::ReadOnly))
+    if (!m_file.open(QIODevice::ReadOnly))
     {
         ThreadUnset(THREAD_OPENFILE);
         return;
@@ -70,7 +80,7 @@ void DTObject::Load()
 
     // Head bytes
     QByteArray head;
-    head = file.read(20);
+    head = m_file.read(20);
 
     m_header = *reinterpret_cast<quint32*>(head.mid(0, 4).data());
     m_recordCount = *reinterpret_cast<quint32*>(head.mid(4, 4).data());
@@ -95,12 +105,12 @@ void DTObject::Load()
     quint32 offset = 0;
 
     // Data bytes
-    file.seek(20);
-    dataBytes = file.read(m_recordSize * m_recordCount);
+    m_file.seek(20);
+    dataBytes = m_file.read(m_recordSize * m_recordCount);
 
     // String bytes
-    file.seek(20 + m_recordSize * m_recordCount);
-    stringBytes = file.read(m_stringSize);
+    m_file.seek(20 + m_recordSize * m_recordCount);
+    stringBytes = m_file.read(m_stringSize);
 
     QApplication::postEvent(m_form, new ProgressBar(m_recordCount - 1, BAR_SIZE));
 
@@ -172,7 +182,7 @@ void DTObject::Load()
 
     QApplication::postEvent(m_form, new SendModel(m_form, model));
 
-    file.close();
+    m_file.close();
 
     //QString stime(QString("Load time (ms): %0").arg(m_time.elapsed()));
 
