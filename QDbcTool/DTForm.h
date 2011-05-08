@@ -3,6 +3,7 @@
 
 #include <QtGui/QMainWindow>
 #include <QtGui/QDialog>
+#include <QtGui/QStatusBar>
 #include <QtCore/QAbstractTableModel>
 #include "ui_DTForm.h"
 #include "ui_DTBuild.h"
@@ -29,6 +30,7 @@ class DTForm : public QMainWindow, public Ui::DTFormUI
 
 private:
     Ui::DTFormUI ui;
+    QStatusBar* statusBar;
     DTObject* dbc;
 };
 

@@ -10,6 +10,10 @@ DTForm::DTForm(QWidget *parent)
 
     dbc = new DTObject(this);
 
+    statusBar = new QStatusBar(this);
+    setStatusBar(statusBar);
+    statusBar->showMessage("Ready");
+
     connect(actionOpen, SIGNAL(triggered()), this, SLOT(SlotOpenFile()));
 }
 
@@ -72,6 +76,20 @@ bool DTForm::event(QEvent *ev)
         {
             SendModel* m_ev = (SendModel*)ev;
             tableView->setModel(m_ev->GetObject());
+            return true;
+        }
+        break;
+        case SendText::TypeId:
+        {
+            SendText* m_ev = (SendText*)ev;
+            switch (m_ev->GetId())
+            {
+                case 1:
+                    statusBar->showMessage(m_ev->GetText());
+                    break;
+                default:
+                    break;
+            }
             return true;
         }
         break;

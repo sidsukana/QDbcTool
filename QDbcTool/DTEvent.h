@@ -38,4 +38,20 @@ class SendModel : public QEvent
         DBCTableModel* m_obj;
 };
 
+class SendText : public QEvent
+{
+    public:
+        enum { TypeId = QEvent::User + 3 };
+        SendText(DTForm *form, quint8 id, QString str);
+        ~SendText();
+
+        QString GetText() { return m_str; }
+        quint8 GetId() { return m_id; }
+
+    private:
+        DTForm *m_form;
+        QString m_str;
+        quint8 m_id;
+};
+
 #endif // EVENTMGR_H

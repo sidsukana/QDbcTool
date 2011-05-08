@@ -65,8 +65,8 @@ void DTObject::Load()
     ThreadSet(THREAD_OPENFILE);
 
     // Timer
-    //QTime m_time;
-    //m_time.start();
+    QTime m_time;
+    m_time.start();
 
     QFile m_file(m_fileName);
 
@@ -184,7 +184,9 @@ void DTObject::Load()
 
     m_file.close();
 
-    //QString stime(QString("Load time (ms): %0").arg(m_time.elapsed()));
+    QString stime(QString("Load time (ms): %0").arg(m_time.elapsed()));
+
+    QApplication::postEvent(m_form, new SendText(m_form, 1, stime));
 
     ThreadUnset(THREAD_OPENFILE);
 }
