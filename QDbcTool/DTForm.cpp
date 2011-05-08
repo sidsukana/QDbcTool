@@ -117,6 +117,7 @@ void DBCTableModel::clear()
 {
     beginResetModel();
     m_dbcList.clear();
+    m_fieldsNames.clear();
     endResetModel();
 }
 
@@ -146,25 +147,21 @@ QVariant DBCTableModel::data(const QModelIndex &index, int role) const
     return QVariant();
 }
 
-/*QVariant DBCTableModel::headerData(int section, Qt::Orientation orientation, int role) const
+QVariant DBCTableModel::headerData(int section, Qt::Orientation orientation, int role) const
 {
     if (role != Qt::DisplayRole)
         return QVariant();
 
-    if (orientation == Qt::Horizontal) {
-        switch (section) {
-            case 0:
-                return tr("Name");
+    if (orientation == Qt::Horizontal)
+        return m_fieldsNames.at(section);
 
-            case 1:
-                return tr("Address");
-
-            default:
-                return QVariant();
-        }
-    }
     return QVariant();
-}*/ 
+}
+
+void DBCTableModel::setFieldsNames(QStringList strl)
+{
+    m_fieldsNames = strl;
+}
 
 void DBCTableModel::insertRecord(QStringList strl)
 {

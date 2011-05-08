@@ -14,8 +14,9 @@ DTObject::DTObject(DTForm *form)
     m_stringSize = 0;
 
     m_fileName = "";
-
     m_build = "";
+
+    m_fieldsNames.clear();
 
     model = new DBCTableModel(m_form, this);
     config = new QSettings("config.ini", QSettings::IniFormat, m_form);
@@ -49,6 +50,13 @@ void DTObject::LoadConfig()
 
         QString key = m_build + "/" + finfo.fileName();
         m_format = config->value(key + "/Format", "None").toString();
+
+        m_fieldsNames.clear();
+        for (quint32 i = 0; i < m_format.length(); i++)
+        {
+            QString fieldName(QString("%0/Field%1").arg(key).arg(i+1));
+            m_fieldsNames.append(config->value(fieldName, "Unknown").toString());
+        }
     }
 }
 
@@ -179,6 +187,8 @@ void DTObject::Load()
         model->insertRecord(strl);
         QApplication::postEvent(m_form, new ProgressBar(i, BAR_STEP));
     }
+
+    model->setFieldsNames(m_fieldsNames);
 
     QApplication::postEvent(m_form, new SendModel(m_form, model));
 

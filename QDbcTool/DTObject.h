@@ -47,6 +47,7 @@ class DTObject
         QSettings* config;
         QString m_format;
         QString m_build;
+        QStringList m_fieldsNames;
 
         DBCTableModel* model;
 
