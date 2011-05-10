@@ -131,9 +131,17 @@ void DTObject::Load()
         {
             switch (GetColumnFormat(j).toAscii())
             {
+                case 'u':
+                {
+                    quint32 value = *reinterpret_cast<qint32*>(dataBytes.mid(offset, 4).data());
+                    QString data = QString("%0").arg(value);
+                    strl.append(data);
+                    offset += 4;
+                }
+                break;
                 case 'i':
                 {
-                    quint32 value = *reinterpret_cast<quint32*>(dataBytes.mid(offset, 4).data());
+                    qint32 value = *reinterpret_cast<quint32*>(dataBytes.mid(offset, 4).data());
                     QString data = QString("%0").arg(value);
                     strl.append(data);
                     offset += 4;
@@ -141,7 +149,7 @@ void DTObject::Load()
                 break;
                 case 'f':
                 {
-                    quint32 value = *reinterpret_cast<float*>(dataBytes.mid(offset, 4).data());
+                    float value = *reinterpret_cast<float*>(dataBytes.mid(offset, 4).data());
                     QString data = QString("%0").arg(value);
                     strl.append(data);
                     offset += 4;
@@ -225,6 +233,9 @@ void DTObject::ExportAsSQL()
         QString endl = i < m_fieldCount-1 ? ",\n" : "\n";
         switch (GetColumnFormat(i).toAscii())
         {
+            case 'u':
+                stream << "\t`" + m_fieldsNames.at(i) + "` bigint(20) NOT NULL default '0'" + endl;
+                break;
             case 'i':
                 stream << "\t`" + m_fieldsNames.at(i) + "` bigint(20) NOT NULL default '0'" + endl;
                 break;
