@@ -4,6 +4,7 @@
 #include <QtCore/QFile>
 #include <QtCore/QFileInfo>
 #include <QtCore/QTime>
+#include <QtCore/QTextStream>
 
 DTObject::DTObject(DTForm *form)
     : m_form(form)
@@ -13,6 +14,7 @@ DTObject::DTObject(DTForm *form)
     m_recordSize = 0;
     m_stringSize = 0;
 
+    m_saveFileName = "";
     m_fileName = "";
     m_build = "";
 
@@ -55,7 +57,7 @@ void DTObject::LoadConfig()
         for (quint32 i = 0; i < m_format.length(); i++)
         {
             QString fieldName(QString("%0/Field%1").arg(key).arg(i+1));
-            m_fieldsNames.append(config->value(fieldName, "Unknown").toString());
+            m_fieldsNames.append(config->value(fieldName, QString("Field%0").arg(i+1)).toString());
         }
     }
 }
@@ -199,4 +201,83 @@ void DTObject::Load()
     QApplication::postEvent(m_form, new SendText(m_form, 1, stime));
 
     ThreadUnset(THREAD_OPENFILE);
+}
+
+void DTObject::ExportAsSQL()
+{
+    ThreadSet(THREAD_EXPORT_SQL);
+
+    QFileInfo finfo(m_fileName);
+
+    QFile exportFile(m_saveFileName);
+    exportFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
+
+    QTextStream stream(&exportFile);
+
+    QString key = m_build + "/" + finfo.fileName();
+
+    QApplication::postEvent(m_form, new ProgressBar(m_fieldCount+m_recordCount, BAR_SIZE));
+    quint32 step = 0;
+
+    stream << "CREATE TABLE `" + finfo.baseName() + "_dbc` (\n";
+    for (quint32 i = 0; i < m_fieldCount; i++)
+    {
+        QString endl = i < m_fieldCount-1 ? ",\n" : "\n";
+        switch (GetColumnFormat(i).toAscii())
+        {
+            case 'i':
+                stream << "\t`" + m_fieldsNames.at(i) + "` bigint(20) NOT NULL default '0'" + endl;
+                break;
+            case 'f':
+                stream << "\t`" + m_fieldsNames.at(i) + "` float NOT NULL default '0'" + endl;
+                break;
+            case 's':
+                stream << "\t`" + m_fieldsNames.at(i) + "` text NOT NULL" + endl;
+                break;
+            default:
+                stream << "\t`" + m_fieldsNames.at(i) + "` bigint(20) NOT NULL default '0'" + endl;
+                break;
+        }
+        step++;
+        QApplication::postEvent(m_form, new ProgressBar(step, BAR_STEP));
+    }
+    stream << ") ENGINE = MyISAM DEFAULT CHARSET = utf8 COMMENT = 'Data from " + finfo.fileName() + "';\n\n";
+
+    QList<QStringList> dbcList = model->getDbcList();
+    for (quint32 i = 0; i < m_recordCount; i++)
+    {
+        stream << "INSERT INTO `" + finfo.baseName() + "_dbc` (";
+        for (quint32 f = 0; f < m_fieldCount; f++)
+        {
+            QString endl = f < m_fieldCount-1 ? "`, " : "`) VALUES (";
+            stream << "`" + m_fieldsNames.at(f) + endl;
+        }
+        QStringList dataList = dbcList.at(i);
+
+        for (quint32 d = 0; d < dataList.size(); d++)
+        {
+            if (dataList.at(d).contains("'"))
+            {
+                QString data = dataList.at(d);
+                data.replace("'", "\\'");
+                dataList.replace(d, data);
+            }
+        }
+
+        for (quint32 j = 0; j < m_fieldCount; j++)
+        {
+            if (j < m_fieldCount-1)
+                stream << "'" + dataList.at(j) + "', ";
+            else
+                stream << "'" + dataList.at(j) + "');\n";
+        }
+        step++;
+        QApplication::postEvent(m_form, new ProgressBar(step, BAR_STEP));
+    }
+
+    exportFile.close();
+
+    QApplication::postEvent(m_form, new SendText(m_form, 1, QString("Done!")));
+
+    ThreadUnset(THREAD_EXPORT_SQL);
 }

@@ -26,6 +26,7 @@ class DTObject
         quint32 GetStringSize() { return m_stringSize; }
         QString GetFileName() { return m_fileName; }
         void SetFileName(QString name) { m_fileName = name; }
+        void SetSaveFileName(QString name) { m_saveFileName = name; }
         void SetBuild(QString build) { m_build = build; }
         void LoadConfig();
 
@@ -36,6 +37,9 @@ class DTObject
         void ThreadUnset(quint8 id) { ThreadSemaphore[id] = false; }
         bool ThreadExist(quint8 id) { return ThreadSemaphore[id]; }
 
+        void ExportAsSQL();
+
+        bool isEmpty() { return (m_fileName.isEmpty() && m_build.isEmpty()); }
     private:
         quint32 m_recordCount;
         quint32 m_fieldCount;
@@ -44,6 +48,7 @@ class DTObject
 
         DTForm* m_form;
         QString m_fileName;
+        QString m_saveFileName;
         QSettings* config;
         QString m_format;
         QString m_build;

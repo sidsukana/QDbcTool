@@ -18,6 +18,9 @@ void TObject::run()
         case THREAD_OPENFILE:
             m_dbc->Load();
             break;
+        case THREAD_EXPORT_SQL:
+            m_dbc->ExportAsSQL();
+            break;
         default:
             break;
     }

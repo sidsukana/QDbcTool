@@ -15,6 +15,7 @@ DTForm::DTForm(QWidget *parent)
     statusBar->showMessage("Ready");
 
     connect(actionOpen, SIGNAL(triggered()), this, SLOT(SlotOpenFile()));
+    connect(actionExport_as_SQL, SIGNAL(triggered()), this, SLOT(SlotExportAsSQL()));
 }
 
 DTForm::~DTForm()
@@ -31,20 +32,44 @@ DTBuild::~DTBuild()
 {
 }
 
+void DTForm::SlotExportAsSQL()
+{
+    if (!dbc->isEmpty())
+    {
+        QString fileName = QFileDialog::getSaveFileName(this, "Save as SQL file", ".", "SQL File (*.sql)");
+
+        if (!fileName.isEmpty())
+        {
+            dbc->SetSaveFileName(fileName);
+            statusBar->showMessage("Exporting to SQL file...");
+            dbc->ThreadBegin(THREAD_EXPORT_SQL);
+        }
+    }
+    else
+        statusBar->showMessage("DBC not loaded! Please load DBC file!");
+
+}
+
 void DTForm::SlotOpenFile()
 {
-    dbc->SetFileName(QFileDialog::getOpenFileName());
+    QString fileName = QFileDialog::getOpenFileName(this, "Open DBC file", ".", "DBC Files (*.dbc)");
 
-    DTBuild* build = new DTBuild;
-    build->show();
-    build->comboBox->clear();
-    build->comboBox->addItems(dbc->GetConfig()->childGroups());
-
-    if (build->exec() == QDialog::Accepted)
+    if (!fileName.isEmpty())
     {
-        dbc->SetBuild(build->comboBox->currentText());
-        dbc->LoadConfig();
-        dbc->ThreadBegin(THREAD_OPENFILE);
+        dbc->SetFileName(fileName);
+
+        DTBuild* build = new DTBuild;
+        build->show();
+        build->comboBox->clear();
+        build->comboBox->addItems(dbc->GetConfig()->childGroups());
+
+        if (build->exec() == QDialog::Accepted)
+        {
+            statusBar->showMessage("Loading DBC file...");
+            dbc->SetBuild(build->comboBox->currentText());
+            dbc->LoadConfig();
+            dbc->ThreadBegin(THREAD_OPENFILE);
+        }
     }
 }
 

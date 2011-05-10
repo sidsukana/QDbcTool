@@ -13,6 +13,7 @@ enum SpellEffectIndex
 enum Threads
 {
     THREAD_OPENFILE,
+    THREAD_EXPORT_SQL,
     MAX_THREAD
 };
 

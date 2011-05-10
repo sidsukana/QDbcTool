@@ -27,6 +27,7 @@ class DTForm : public QMainWindow, public Ui::DTFormUI
     
     public slots:
         void SlotOpenFile();
+        void SlotExportAsSQL();
 
 private:
     Ui::DTFormUI ui;
