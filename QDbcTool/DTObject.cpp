@@ -20,7 +20,6 @@ DTObject::DTObject(DTForm *form)
 
     m_fieldsNames.clear();
 
-    model = new DBCTableModel(m_form, this);
     config = new QSettings("config.ini", QSettings::IniFormat, m_form);
 
     LoadConfig();
@@ -105,8 +104,6 @@ void DTObject::Load()
         return;
     }
 
-    model->clear();
-
     QByteArray dataBytes;
     QByteArray stringBytes;
 
@@ -122,6 +119,10 @@ void DTObject::Load()
     m_file.seek(20 + m_recordSize * m_recordCount);
     stringBytes = m_file.read(m_stringSize);
 
+    DBCTableModel* model = new DBCTableModel(m_form, this);
+    model->clear();
+    model->setFieldsNames(m_fieldsNames);
+
     QApplication::postEvent(m_form, new ProgressBar(m_recordCount - 1, BAR_SIZE));
 
     for (quint32 i = 0; i < m_recordCount; i++)
@@ -133,7 +134,7 @@ void DTObject::Load()
             {
                 case 'u':
                 {
-                    quint32 value = *reinterpret_cast<qint32*>(dataBytes.mid(offset, 4).data());
+                    quint32 value = *reinterpret_cast<quint32*>(dataBytes.mid(offset, 4).data());
                     QString data = QString("%0").arg(value);
                     strl.append(data);
                     offset += 4;
@@ -141,7 +142,7 @@ void DTObject::Load()
                 break;
                 case 'i':
                 {
-                    qint32 value = *reinterpret_cast<quint32*>(dataBytes.mid(offset, 4).data());
+                    qint32 value = *reinterpret_cast<qint32*>(dataBytes.mid(offset, 4).data());
                     QString data = QString("%0").arg(value);
                     strl.append(data);
                     offset += 4;
@@ -198,8 +199,6 @@ void DTObject::Load()
         QApplication::postEvent(m_form, new ProgressBar(i, BAR_STEP));
     }
 
-    model->setFieldsNames(m_fieldsNames);
-
     QApplication::postEvent(m_form, new SendModel(m_form, model));
 
     m_file.close();
@@ -214,6 +213,10 @@ void DTObject::Load()
 void DTObject::ExportAsSQL()
 {
     ThreadSet(THREAD_EXPORT_SQL);
+
+    DBCTableModel* model = static_cast<DBCTableModel*>(m_form->tableView->model());
+    if (!model)
+        return;
 
     QFileInfo finfo(m_fileName);
 

@@ -66,6 +66,11 @@ void DTForm::SlotOpenFile()
         if (build->exec() == QDialog::Accepted)
         {
             statusBar->showMessage("Loading DBC file...");
+
+            DBCTableModel* model = static_cast<DBCTableModel*>(tableView->model());
+            if (model)
+                delete model;
+
             dbc->SetBuild(build->comboBox->currentText());
             dbc->LoadConfig();
             dbc->ThreadBegin(THREAD_OPENFILE);
@@ -160,6 +165,9 @@ int DBCTableModel::columnCount(const QModelIndex &parent) const
 
 QVariant DBCTableModel::data(const QModelIndex &index, int role) const
 {
+    if (m_dbcList.isEmpty())
+        return QVariant();
+
     if (!index.isValid())
         return QVariant();
 
@@ -174,6 +182,9 @@ QVariant DBCTableModel::data(const QModelIndex &index, int role) const
 
 QVariant DBCTableModel::headerData(int section, Qt::Orientation orientation, int role) const
 {
+    if (m_fieldsNames.isEmpty())
+        return QVariant();
+
     if (role != Qt::DisplayRole)
         return QVariant();
 

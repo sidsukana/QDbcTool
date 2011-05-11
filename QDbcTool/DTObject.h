@@ -54,8 +54,6 @@ class DTObject
         QString m_build;
         QStringList m_fieldsNames;
 
-        DBCTableModel* model;
-
         bool ThreadSemaphore[MAX_THREAD];
 };
 
