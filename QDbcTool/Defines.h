@@ -14,6 +14,7 @@ enum Threads
 {
     THREAD_OPENFILE,
     THREAD_EXPORT_SQL,
+    THREAD_EXPORT_CSV,
     MAX_THREAD
 };
 

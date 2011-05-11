@@ -21,6 +21,9 @@ void TObject::run()
         case THREAD_EXPORT_SQL:
             m_dbc->ExportAsSQL();
             break;
+        case THREAD_EXPORT_CSV:
+            m_dbc->ExportAsCSV();
+            break;
         default:
             break;
     }

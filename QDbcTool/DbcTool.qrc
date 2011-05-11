@@ -1,4 +1,6 @@
 <RCC>
-    <qresource prefix="QDbcTool">
-    </qresource>
+  <qresource prefix="QDbcTool">
+    <file>mangos.ico</file>
+    <file>qt-logo.png</file>
+  </qresource>
 </RCC>

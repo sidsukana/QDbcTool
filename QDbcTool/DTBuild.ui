@@ -9,12 +9,16 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>311</width>
-    <height>49</height>
+    <width>252</width>
+    <height>76</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Select Build</string>
+  </property>
+  <property name="windowIcon">
+   <iconset resource="DbcTool.qrc">
+    <normaloff>:/QDbcTool/mangos.ico</normaloff>:/QDbcTool/mangos.ico</iconset>
   </property>
   <property name="modal">
    <bool>true</bool>
@@ -22,8 +26,8 @@
   <widget class="QDialogButtonBox" name="buttonBox">
    <property name="geometry">
     <rect>
-     <x>140</x>
-     <y>10</y>
+     <x>40</x>
+     <y>40</y>
      <width>161</width>
      <height>31</height>
     </rect>
@@ -38,8 +42,8 @@
   <widget class="QComboBox" name="comboBox">
    <property name="geometry">
     <rect>
-     <x>10</x>
-     <y>15</y>
+     <x>130</x>
+     <y>10</y>
      <width>111</width>
      <height>21</height>
     </rect>
@@ -51,8 +55,29 @@
     </sizepolicy>
    </property>
   </widget>
+  <widget class="QLabel" name="label">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>10</y>
+     <width>111</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <weight>75</weight>
+     <bold>true</bold>
+    </font>
+   </property>
+   <property name="text">
+    <string>Select client build:</string>
+   </property>
+  </widget>
  </widget>
- <resources/>
+ <resources>
+  <include location="DbcTool.qrc"/>
+ </resources>
  <connections>
   <connection>
    <sender>buttonBox</sender>

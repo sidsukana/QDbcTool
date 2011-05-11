@@ -15,7 +15,12 @@ DTForm::DTForm(QWidget *parent)
     statusBar->showMessage("Ready");
 
     connect(actionOpen, SIGNAL(triggered()), this, SLOT(SlotOpenFile()));
+
+    // Export actions
     connect(actionExport_as_SQL, SIGNAL(triggered()), this, SLOT(SlotExportAsSQL()));
+    connect(actionExport_as_CSV, SIGNAL(triggered()), this, SLOT(SlotExportAsCSV()));
+
+    connect(actionAbout, SIGNAL(triggered()), this, SLOT(SlotAbout()));
 }
 
 DTForm::~DTForm()
@@ -26,10 +31,27 @@ DTBuild::DTBuild(QWidget *parent, DTForm* form)
     : QDialog(parent), m_form(form)
 {
     setupUi(this);
+    show();
 }
 
 DTBuild::~DTBuild()
 {
+}
+
+AboutForm::AboutForm(QWidget *parent)
+    : QDialog(parent)
+{
+    setupUi(this);
+    show();
+}
+
+AboutForm::~AboutForm()
+{
+}
+
+void DTForm::SlotAbout()
+{
+    new AboutForm;
 }
 
 void DTForm::SlotExportAsSQL()
@@ -50,6 +72,24 @@ void DTForm::SlotExportAsSQL()
 
 }
 
+void DTForm::SlotExportAsCSV()
+{
+    if (!dbc->isEmpty())
+    {
+        QString fileName = QFileDialog::getSaveFileName(this, "Save as CSV file", ".", "CSV File (*.csv)");
+
+        if (!fileName.isEmpty())
+        {
+            dbc->SetSaveFileName(fileName);
+            statusBar->showMessage("Exporting to CSV file...");
+            dbc->ThreadBegin(THREAD_EXPORT_CSV);
+        }
+    }
+    else
+        statusBar->showMessage("DBC not loaded! Please load DBC file!");
+
+}
+
 void DTForm::SlotOpenFile()
 {
     QString fileName = QFileDialog::getOpenFileName(this, "Open DBC file", ".", "DBC Files (*.dbc)");
@@ -59,7 +99,6 @@ void DTForm::SlotOpenFile()
         dbc->SetFileName(fileName);
 
         DTBuild* build = new DTBuild;
-        build->show();
         build->comboBox->clear();
         build->comboBox->addItems(dbc->GetConfig()->childGroups());
 

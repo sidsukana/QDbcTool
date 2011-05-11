@@ -37,7 +37,9 @@ class DTObject
         void ThreadUnset(quint8 id) { ThreadSemaphore[id] = false; }
         bool ThreadExist(quint8 id) { return ThreadSemaphore[id]; }
 
+        // Export methods
         void ExportAsSQL();
+        void ExportAsCSV();
 
         bool isEmpty() { return (m_fileName.isEmpty() && m_build.isEmpty()); }
     private:

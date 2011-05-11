@@ -210,6 +210,68 @@ void DTObject::Load()
     ThreadUnset(THREAD_OPENFILE);
 }
 
+void DTObject::ExportAsCSV()
+{
+    ThreadSet(THREAD_EXPORT_CSV);
+
+    DBCTableModel* model = static_cast<DBCTableModel*>(m_form->tableView->model());
+    if (!model)
+        return;
+
+    QFileInfo finfo(m_fileName);
+
+    QFile exportFile(m_saveFileName);
+    exportFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
+
+    QTextStream stream(&exportFile);
+
+    QString key = m_build + "/" + finfo.fileName();
+
+    QApplication::postEvent(m_form, new ProgressBar(m_recordCount, BAR_SIZE));
+    quint32 step = 0;
+
+    for (quint32 f = 0; f < m_fieldCount; f++)
+        stream << m_fieldsNames.at(f) + ";";
+
+    stream << "\n";
+
+    QList<QStringList> dbcList = model->getDbcList();
+
+    for (quint32 i = 0; i < m_recordCount; i++)
+    {
+        QStringList dataList = dbcList.at(i);
+
+        for (quint32 j = 0; j < m_fieldCount; j++)
+        {
+            switch (GetColumnFormat(j).toAscii())
+            {
+                case 'u':
+                case 'i':
+                case 'f':
+                    stream << dataList.at(j) + ";";
+                    break;
+                case 's':
+                    stream << "\"" + dataList.at(j) + "\";";
+                    break;
+                default:
+                    stream << dataList.at(j) + ";";
+                    break;
+            }
+        }
+
+        stream << "\n";
+
+        step++;
+        QApplication::postEvent(m_form, new ProgressBar(step, BAR_STEP));
+    }
+
+    exportFile.close();
+
+    QApplication::postEvent(m_form, new SendText(m_form, 1, QString("Done!")));
+
+    ThreadUnset(THREAD_EXPORT_CSV);
+}
+
 void DTObject::ExportAsSQL()
 {
     ThreadSet(THREAD_EXPORT_SQL);
@@ -237,8 +299,6 @@ void DTObject::ExportAsSQL()
         switch (GetColumnFormat(i).toAscii())
         {
             case 'u':
-                stream << "\t`" + m_fieldsNames.at(i) + "` bigint(20) NOT NULL default '0'" + endl;
-                break;
             case 'i':
                 stream << "\t`" + m_fieldsNames.at(i) + "` bigint(20) NOT NULL default '0'" + endl;
                 break;

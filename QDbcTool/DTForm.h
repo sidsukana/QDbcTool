@@ -7,6 +7,7 @@
 #include <QtCore/QAbstractTableModel>
 #include "ui_DTForm.h"
 #include "ui_DTBuild.h"
+#include "ui_AboutFormUI.h"
 #include "Defines.h"
 #include "TObject.h"
 #include "DTEvent.h"
@@ -28,6 +29,8 @@ class DTForm : public QMainWindow, public Ui::DTFormUI
     public slots:
         void SlotOpenFile();
         void SlotExportAsSQL();
+        void SlotExportAsCSV();
+        void SlotAbout();
 
 private:
     Ui::DTFormUI ui;
@@ -46,6 +49,18 @@ class DTBuild : public QDialog, public Ui::DTBuildUI
 private:
     Ui::DTBuildUI ui;
     DTForm* m_form;
+};
+
+class AboutForm : public QDialog, public Ui::AboutFormUI
+{
+    Q_OBJECT
+
+public:
+    AboutForm(QWidget *parent = 0);
+    ~AboutForm();
+
+private:
+    Ui::AboutFormUI ui;
 };
 
 typedef QList<QStringList> DBCList;
