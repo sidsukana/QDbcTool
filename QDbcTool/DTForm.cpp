@@ -14,6 +14,8 @@ DTForm::DTForm(QWidget *parent)
     setStatusBar(statusBar);
     statusBar->showMessage("Ready");
 
+    //config = new QSettings("config.ini", QSettings::IniFormat, this);
+
     connect(actionOpen, SIGNAL(triggered()), this, SLOT(SlotOpenFile()));
 
     // Export actions
@@ -95,26 +97,45 @@ void DTForm::SlotOpenFile()
 {
     QString fileName = QFileDialog::getOpenFileName(this, "Open DBC file", ".", "DBC Files (*.dbc)");
 
-    if (!fileName.isEmpty())
+    if (fileName.isEmpty())
+        return;
+
+    QFileInfo finfo(fileName);
+    QFile xmlFile("dbcFormats.xml");
+    xmlFile.open(QIODevice::ReadOnly);
+    QDomDocument formats;
+    formats.setContent(&xmlFile);
+    xmlFile.close();
+
+    QDomNodeList dbcNodes = formats.childNodes();
+    QStringList buildList;
+
+    for (quint32 i = 0; i < dbcNodes.count(); i++)
+        if (!formats.elementsByTagName(finfo.baseName()).isEmpty())
+            buildList.append(formats.elementsByTagName(finfo.baseName()).item(i).toElement().attribute("build"));
+
+    if (buildList.isEmpty())
     {
+        statusBar->showMessage("Builds with structure for this DBC not found!");
+        return;
+    }
+
+    DTBuild* build = new DTBuild;
+    build->comboBox->clear();
+    build->comboBox->addItems(buildList);
+
+    if (build->exec() == QDialog::Accepted)
+    {
+        statusBar->showMessage("Loading DBC file...");
+
+        DBCTableModel* model = static_cast<DBCTableModel*>(tableView->model());
+        if (model)
+            delete model;
+
         dbc->SetFileName(fileName);
-
-        DTBuild* build = new DTBuild;
-        build->comboBox->clear();
-        build->comboBox->addItems(dbc->GetConfig()->childGroups());
-
-        if (build->exec() == QDialog::Accepted)
-        {
-            statusBar->showMessage("Loading DBC file...");
-
-            DBCTableModel* model = static_cast<DBCTableModel*>(tableView->model());
-            if (model)
-                delete model;
-
-            dbc->SetBuild(build->comboBox->currentText());
-            dbc->LoadConfig();
-            dbc->ThreadBegin(THREAD_OPENFILE);
-        }
+        dbc->SetBuild(build->comboBox->currentText());
+        dbc->LoadFormats();
+        dbc->ThreadBegin(THREAD_OPENFILE);
     }
 }
 
@@ -187,7 +208,7 @@ void DBCTableModel::clear()
 {
     beginResetModel();
     m_dbcList.clear();
-    m_fieldsNames.clear();
+    m_fieldNames.clear();
     endResetModel();
 }
 
@@ -222,14 +243,14 @@ QVariant DBCTableModel::data(const QModelIndex &index, int role) const
 
 QVariant DBCTableModel::headerData(int section, Qt::Orientation orientation, int role) const
 {
-    if (m_fieldsNames.isEmpty())
+    if (m_fieldNames.isEmpty())
         return QVariant();
 
     if (role != Qt::DisplayRole)
         return QVariant();
 
     if (orientation == Qt::Horizontal)
-        return m_fieldsNames.at(section);
+        return m_fieldNames.at(section);
 
     return QVariant();
 }

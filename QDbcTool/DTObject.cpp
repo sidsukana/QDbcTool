@@ -18,11 +18,9 @@ DTObject::DTObject(DTForm *form)
     m_fileName = "";
     m_build = "";
 
-    m_fieldsNames.clear();
-
-    config = new QSettings("config.ini", QSettings::IniFormat, m_form);
-
-    LoadConfig();
+    m_fieldNames.clear();
+    m_fieldTypes.clear();
+    m_dbcFormats.clear();
 
     for (quint8 i = 0; i < MAX_THREAD; i++)
         ThreadSemaphore[i] = false;
@@ -41,30 +39,40 @@ void DTObject::ThreadBegin(quint8 id)
     }
 }
 
-void DTObject::LoadConfig()
+void DTObject::LoadFormats()
 {
-    config->sync();
-
     if (!m_build.isEmpty())
     {
         QFileInfo finfo(m_fileName);
 
-        QString key = m_build + "/" + finfo.fileName();
-        m_format = config->value(key + "/Format", "None").toString();
+        QFile xmlFile("dbcFormats.xml");
+        xmlFile.open(QIODevice::ReadOnly);
+        m_dbcFormats.setContent(&xmlFile);
 
-        m_fieldsNames.clear();
-        for (quint32 i = 0; i < m_format.length(); i++)
-        {
-            QString fieldName(QString("%0/Field%1").arg(key).arg(i+1));
-            m_fieldsNames.append(config->value(fieldName, QString("Field%0").arg(i+1)).toString());
-        }
+        QDomNodeList dbcNodes = m_dbcFormats.childNodes();
+
+        m_fieldNames.clear();
+        m_fieldTypes.clear();
+
+        for (quint32 i = 0; i < dbcNodes.count(); i++)
+	    {
+            if (m_dbcFormats.elementsByTagName(finfo.baseName()).item(i).toElement().attribute("build") == m_build)
+            {
+                QDomNodeList fieldNodes = m_dbcFormats.elementsByTagName(finfo.baseName()).item(i).childNodes();
+                for (quint32 j = 0; j < fieldNodes.count(); j++)
+                {
+                    m_fieldTypes.append(fieldNodes.item(j).toElement().attribute("type", "uint"));
+                    m_fieldNames.append(fieldNodes.item(j).toElement().attribute("name", QString("Field%0").arg(j+1)));
+                }
+            }
+	    }
     }
 }
 
-inline QChar DTObject::GetColumnFormat(quint32 field)
+inline QChar DTObject::GetFieldType(quint32 field)
 {
-    if (!m_format.isEmpty())
-        return m_format.at(field);
+    if (!m_fieldTypes.isEmpty())
+        return m_fieldTypes.at(field).at(0);
 
     return QChar();
 }
@@ -119,7 +127,7 @@ void DTObject::Load()
 
     DBCTableModel* model = new DBCTableModel(m_form, this);
     model->clear();
-    model->setFieldsNames(m_fieldsNames);
+    model->setFieldNames(m_fieldNames);
 
     QApplication::postEvent(m_form, new ProgressBar(m_recordCount - 1, BAR_SIZE));
 
@@ -128,7 +136,7 @@ void DTObject::Load()
         recordList.clear();
         for (quint32 j = 0; j < m_fieldCount; j++)
         {
-            switch (GetColumnFormat(j).toAscii())
+            switch (GetFieldType(j).toAscii())
             {
                 case 'u':
                 {
@@ -221,7 +229,7 @@ void DTObject::ExportAsCSV()
     quint32 step = 0;
 
     for (quint32 f = 0; f < m_fieldCount; f++)
-        stream << m_fieldsNames.at(f) + ";";
+        stream << m_fieldNames.at(f) + ";";
 
     stream << "\n";
 
@@ -233,7 +241,7 @@ void DTObject::ExportAsCSV()
 
         for (quint32 j = 0; j < m_fieldCount; j++)
         {
-            switch (GetColumnFormat(j).toAscii())
+            switch (GetFieldType(j).toAscii())
             {
                 case 'u':
                 case 'i':
@@ -286,20 +294,20 @@ void DTObject::ExportAsSQL()
     for (quint32 i = 0; i < m_fieldCount; i++)
     {
         QString endl = i < m_fieldCount-1 ? ",\n" : "\n";
-        switch (GetColumnFormat(i).toAscii())
+        switch (GetFieldType(i).toAscii())
         {
             case 'u':
             case 'i':
-                stream << "\t`" + m_fieldsNames.at(i) + "` bigint(20) NOT NULL default '0'" + endl;
+                stream << "\t`" + m_fieldNames.at(i) + "` bigint(20) NOT NULL default '0'" + endl;
                 break;
             case 'f':
-                stream << "\t`" + m_fieldsNames.at(i) + "` float NOT NULL default '0'" + endl;
+                stream << "\t`" + m_fieldNames.at(i) + "` float NOT NULL default '0'" + endl;
                 break;
             case 's':
-                stream << "\t`" + m_fieldsNames.at(i) + "` text NOT NULL" + endl;
+                stream << "\t`" + m_fieldNames.at(i) + "` text NOT NULL" + endl;
                 break;
             default:
-                stream << "\t`" + m_fieldsNames.at(i) + "` bigint(20) NOT NULL default '0'" + endl;
+                stream << "\t`" + m_fieldNames.at(i) + "` bigint(20) NOT NULL default '0'" + endl;
                 break;
         }
         step++;
@@ -314,7 +322,7 @@ void DTObject::ExportAsSQL()
         for (quint32 f = 0; f < m_fieldCount; f++)
         {
             QString endl = f < m_fieldCount-1 ? "`, " : "`) VALUES (";
-            stream << "`" + m_fieldsNames.at(f) + endl;
+            stream << "`" + m_fieldNames.at(f) + endl;
         }
         QStringList dataList = dbcList.at(i);
 

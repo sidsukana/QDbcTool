@@ -5,7 +5,10 @@
 #include "DTEvent.h"
 #include "TObject.h"
 
-#include <QtCore/QSettings>
+#include <QtXml/QDomElement>
+#include <QtXml/QDomDocument>
+#include <QtXml/QDomAttr>
+#include <QtXml/QDomNodeList>
 
 class DTForm;
 class DBCTableModel;
@@ -18,7 +21,7 @@ class DTObject
         ~DTObject();
 
         void Load();
-        inline QChar GetColumnFormat(quint32 field);
+        inline QChar GetFieldType(quint32 field);
 
         quint32 GetRecordCount() { return m_recordCount; }
         quint32 GetFieldCount() { return m_fieldCount; }
@@ -28,9 +31,7 @@ class DTObject
         void SetFileName(QString name) { m_fileName = name; }
         void SetSaveFileName(QString name) { m_saveFileName = name; }
         void SetBuild(QString build) { m_build = build; }
-        void LoadConfig();
-
-        QSettings* GetConfig() { return config; }
+        void LoadFormats();
 
         void ThreadBegin(quint8 id);
         void ThreadSet(quint8 id) { ThreadSemaphore[id] = true; }
@@ -43,18 +44,21 @@ class DTObject
 
         bool isEmpty() { return (m_fileName.isEmpty() && m_build.isEmpty()); }
     private:
+        DTForm* m_form;
+
         quint32 m_recordCount;
         quint32 m_fieldCount;
         quint32 m_recordSize;
         quint32 m_stringSize;
 
-        DTForm* m_form;
         QString m_fileName;
         QString m_saveFileName;
-        QSettings* config;
-        QString m_format;
         QString m_build;
-        QStringList m_fieldsNames;
+
+        QStringList m_fieldNames;
+        QStringList m_fieldTypes;
+
+        QDomDocument m_dbcFormats;
 
         bool ThreadSemaphore[MAX_THREAD];
 };
