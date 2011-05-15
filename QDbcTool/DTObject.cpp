@@ -61,7 +61,7 @@ void DTObject::LoadConfig()
     }
 }
 
-QChar DTObject::GetColumnFormat(quint32 field)
+inline QChar DTObject::GetColumnFormat(quint32 field)
 {
     if (!m_format.isEmpty())
         return m_format.at(field);
@@ -78,8 +78,6 @@ void DTObject::Load()
     m_time.start();
 
     QFile m_file(m_fileName);
-
-    quint32 m_header;
         
     if (!m_file.open(QIODevice::ReadOnly))
     {
@@ -91,11 +89,13 @@ void DTObject::Load()
     QByteArray head;
     head = m_file.read(20);
 
-    m_header = *reinterpret_cast<quint32*>(head.mid(0, 4).data());
-    m_recordCount = *reinterpret_cast<quint32*>(head.mid(4, 4).data());
-    m_fieldCount = *reinterpret_cast<quint32*>(head.mid(8, 4).data());
-    m_recordSize = *reinterpret_cast<quint32*>(head.mid(12, 4).data());
-    m_stringSize = *reinterpret_cast<quint32*>(head.mid(16, 4).data());
+    quint32 m_header;
+
+    m_header        = *reinterpret_cast<quint32*>(head.mid(0, 4).data());
+    m_recordCount   = *reinterpret_cast<quint32*>(head.mid(4, 4).data());
+    m_fieldCount    = *reinterpret_cast<quint32*>(head.mid(8, 4).data());
+    m_recordSize    = *reinterpret_cast<quint32*>(head.mid(12, 4).data());
+    m_stringSize    = *reinterpret_cast<quint32*>(head.mid(16, 4).data());
 
     // Check 'WDBC'
     if (m_header != 0x43424457)
@@ -104,11 +104,9 @@ void DTObject::Load()
         return;
     }
 
-    QByteArray dataBytes;
-    QByteArray stringBytes;
-
-    QStringList strl;
-
+    QByteArray  dataBytes;
+    QByteArray  stringBytes;
+    QStringList recordList;
     quint32 offset = 0;
 
     // Data bytes
@@ -127,7 +125,7 @@ void DTObject::Load()
 
     for (quint32 i = 0; i < m_recordCount; i++)
     {
-        strl.clear();
+        recordList.clear();
         for (quint32 j = 0; j < m_fieldCount; j++)
         {
             switch (GetColumnFormat(j).toAscii())
@@ -135,24 +133,21 @@ void DTObject::Load()
                 case 'u':
                 {
                     quint32 value = *reinterpret_cast<quint32*>(dataBytes.mid(offset, 4).data());
-                    QString data = QString("%0").arg(value);
-                    strl.append(data);
+                    recordList.append(QString("%0").arg(value));
                     offset += 4;
                 }
                 break;
                 case 'i':
                 {
                     qint32 value = *reinterpret_cast<qint32*>(dataBytes.mid(offset, 4).data());
-                    QString data = QString("%0").arg(value);
-                    strl.append(data);
+                    recordList.append(QString("%0").arg(value));
                     offset += 4;
                 }
                 break;
                 case 'f':
                 {
                     float value = *reinterpret_cast<float*>(dataBytes.mid(offset, 4).data());
-                    QString data = QString("%0").arg(value);
-                    strl.append(data);
+                    recordList.append(QString("%0").arg(value));
                     offset += 4;
                 }
                 break;
@@ -173,14 +168,10 @@ void DTObject::Load()
                                 length++;
                         }
 
-                        QString data = QString("%0").arg(stringBytes.mid(value, length).data());
-                        strl.append(data);
+                        recordList.append(QString("%0").arg(stringBytes.mid(value, length).data()));
                     }
                     else
-                    {
-                        QString data = QString("");
-                        strl.append(data);
-                    }
+                        recordList.append(QString(""));
 
                     offset += 4;
                 }
@@ -188,14 +179,13 @@ void DTObject::Load()
                 default:
                 {
                     quint32 value = *reinterpret_cast<quint32*>(dataBytes.mid(offset, 4).data());
-                    QString data = QString("%0").arg(value);
-                    strl.append(data);
+                    recordList.append(QString("%0").arg(value));
                     offset += 4;
                 }
                 break;
             }
         }
-        model->insertRecord(strl);
+        model->appendRecord(recordList);
         QApplication::postEvent(m_form, new ProgressBar(i, BAR_STEP));
     }
 

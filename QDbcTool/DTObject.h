@@ -18,7 +18,7 @@ class DTObject
         ~DTObject();
 
         void Load();
-        QChar GetColumnFormat(quint32 field);
+        inline QChar GetColumnFormat(quint32 field);
 
         quint32 GetRecordCount() { return m_recordCount; }
         quint32 GetFieldCount() { return m_fieldCount; }

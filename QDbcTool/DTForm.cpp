@@ -23,6 +23,7 @@ DTForm::DTForm(QWidget *parent)
     connect(actionAbout, SIGNAL(triggered()), this, SLOT(SlotAbout()));
 }
 
+
 DTForm::~DTForm()
 {
 }
@@ -231,21 +232,6 @@ QVariant DBCTableModel::headerData(int section, Qt::Orientation orientation, int
         return m_fieldsNames.at(section);
 
     return QVariant();
-}
-
-void DBCTableModel::setFieldsNames(QStringList strl)
-{
-    m_fieldsNames = strl;
-}
-
-void DBCTableModel::insertRecord(QStringList strl)
-{
-    m_dbcList.append(strl);
-}
-
-DBCList DBCTableModel::getDbcList()
-{
-    return m_dbcList;
 }
 
 Qt::ItemFlags DBCTableModel::flags(const QModelIndex &index) const

@@ -77,10 +77,10 @@ public:
     int columnCount(const QModelIndex &parent) const;
     QVariant data(const QModelIndex &index, int role) const;
     QVariant headerData(int section, Qt::Orientation orientation, int role) const;
-    void setFieldsNames(QStringList strl);
+    void setFieldsNames(QStringList strl) { m_fieldsNames = strl; }
     Qt::ItemFlags flags(const QModelIndex &index) const;
-    void insertRecord(QStringList strl);
-    DBCList getDbcList();
+    void appendRecord(QStringList strl) { m_dbcList << strl; }
+    DBCList getDbcList() { return m_dbcList; }
     void clear();
 
 private:
