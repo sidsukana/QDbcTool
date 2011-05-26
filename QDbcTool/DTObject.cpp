@@ -212,7 +212,8 @@ void DTObject::ExportAsCSV()
 {
     ThreadSet(THREAD_EXPORT_CSV);
 
-    DBCTableModel* model = static_cast<DBCTableModel*>(m_form->tableView->model());
+    DBCSortedModel* smodel = static_cast<DBCSortedModel*>(m_form->tableView->model());
+    DBCTableModel* model = static_cast<DBCTableModel*>(smodel->sourceModel());
     if (!model)
         return;
 
@@ -274,7 +275,8 @@ void DTObject::ExportAsSQL()
 {
     ThreadSet(THREAD_EXPORT_SQL);
 
-    DBCTableModel* model = static_cast<DBCTableModel*>(m_form->tableView->model());
+    DBCSortedModel* smodel = static_cast<DBCSortedModel*>(m_form->tableView->model());
+    DBCTableModel* model = static_cast<DBCTableModel*>(smodel->sourceModel());
     if (!model)
         return;
 

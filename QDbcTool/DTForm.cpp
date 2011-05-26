@@ -2,6 +2,10 @@
 #include <QtCore/QDataStream>
 #include <QtGui/QTableView>
 #include <QtGui/QFileDialog>
+#include <QtGui/QSortFilterProxyModel>
+#include <QtCore/QAbstractItemModel>
+
+#include "Alphanum.h"
 
 DTForm::DTForm(QWidget *parent)
     : QMainWindow(parent)
@@ -9,6 +13,10 @@ DTForm::DTForm(QWidget *parent)
     setupUi(this);
 
     dbc = new DTObject(this);
+
+    proxyModel = new DBCSortedModel(this);
+    proxyModel->setDynamicSortFilter(true);
+    tableView->setModel(proxyModel);
 
     statusBar = new QStatusBar(this);
     setStatusBar(statusBar);
@@ -25,10 +33,26 @@ DTForm::DTForm(QWidget *parent)
     connect(actionAbout, SIGNAL(triggered()), this, SLOT(SlotAbout()));
 }
 
+DBCSortedModel::DBCSortedModel(QObject *parent)
+    : QSortFilterProxyModel(parent)
+{
+}
+
+bool DBCSortedModel::lessThan(const QModelIndex &left, const QModelIndex &right) const
+{
+    QVariant leftData = sourceModel()->data(left);
+    QVariant rightData = sourceModel()->data(right);
+
+    if (compare(leftData.toString(), rightData.toString()) < 0)
+        return true;
+
+    return false;
+}
 
 DTForm::~DTForm()
 {
 }
+
 
 DTBuild::DTBuild(QWidget *parent, DTForm* form)
     : QDialog(parent), m_form(form)
@@ -128,7 +152,8 @@ void DTForm::SlotOpenFile()
     {
         statusBar->showMessage("Loading DBC file...");
 
-        DBCTableModel* model = static_cast<DBCTableModel*>(tableView->model());
+        DBCSortedModel* smodel = static_cast<DBCSortedModel*>(tableView->model());
+        DBCTableModel* model = static_cast<DBCTableModel*>(smodel->sourceModel());
         if (model)
             delete model;
 
@@ -166,7 +191,7 @@ bool DTForm::event(QEvent *ev)
         case SendModel::TypeId:
         {
             SendModel* m_ev = (SendModel*)ev;
-            tableView->setModel(m_ev->GetObject());
+            proxyModel->setSourceModel(m_ev->GetObject());
             return true;
         }
         break;

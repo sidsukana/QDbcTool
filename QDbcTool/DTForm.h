@@ -5,6 +5,7 @@
 #include <QtGui/QDialog>
 #include <QtGui/QStatusBar>
 #include <QtCore/QAbstractTableModel>
+#include <QtGui/QSortFilterProxyModel>
 //#include <QtCore/QSettings>
 #include "ui_DTForm.h"
 #include "ui_DTBuild.h"
@@ -16,6 +17,7 @@
 
 class TObject;
 class DBCTableModel;
+class DBCSortedModel;
 class DTObject;
 class DTForm : public QMainWindow, public Ui::DTFormUI
 {
@@ -40,6 +42,17 @@ private:
     QStatusBar* statusBar;
     DTObject* dbc;
     //QSettings* config;
+    DBCSortedModel* proxyModel;
+};
+
+class DBCSortedModel : public QSortFilterProxyModel
+{
+    Q_OBJECT
+
+public:
+    DBCSortedModel(QObject *parent = 0);
+
+    bool lessThan(const QModelIndex &left, const QModelIndex &right) const;
 };
 
 class DTBuild : public QDialog, public Ui::DTBuildUI
