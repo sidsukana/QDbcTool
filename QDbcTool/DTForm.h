@@ -19,6 +19,8 @@ class TObject;
 class DBCTableModel;
 class DBCSortedModel;
 class DTObject;
+class DBCFormat;
+
 class DTForm : public QMainWindow, public Ui::DTFormUI
 {
     Q_OBJECT
@@ -41,6 +43,7 @@ private:
     Ui::DTFormUI ui;
     QStatusBar* statusBar;
     DTObject* dbc;
+    DBCFormat* format;
     //QSettings* config;
     DBCSortedModel* proxyModel;
 };

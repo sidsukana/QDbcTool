@@ -12,7 +12,8 @@ DTForm::DTForm(QWidget *parent)
 {
     setupUi(this);
 
-    dbc = new DTObject(this);
+    format = new DBCFormat("dbcFormats.xml");
+    dbc = new DTObject(this, format);
 
     proxyModel = new DBCSortedModel(this);
     proxyModel->setDynamicSortFilter(true);
@@ -125,19 +126,7 @@ void DTForm::SlotOpenFile()
         return;
 
     QFileInfo finfo(fileName);
-    QFile xmlFile("dbcFormats.xml");
-    xmlFile.open(QIODevice::ReadOnly);
-    QDomDocument formats;
-    formats.setContent(&xmlFile);
-    xmlFile.close();
-
-    QDomNodeList dbcNodes = formats.childNodes();
-    QStringList buildList;
-
-    for (quint32 i = 0; i < dbcNodes.count(); i++)
-        if (!formats.elementsByTagName(finfo.baseName()).isEmpty())
-            buildList.append(formats.elementsByTagName(finfo.baseName()).item(i).toElement().attribute("build"));
-
+    QStringList buildList = format->GetBuildList(finfo.baseName());
     if (buildList.isEmpty())
     {
         statusBar->showMessage("Builds with structure for this DBC not found!");
@@ -157,9 +146,7 @@ void DTForm::SlotOpenFile()
         if (model)
             delete model;
 
-        dbc->SetFileName(fileName);
-        dbc->SetBuild(build->comboBox->currentText());
-        dbc->LoadFormats();
+        dbc->Set(fileName, build->comboBox->currentText());
         dbc->ThreadBegin(THREAD_OPENFILE);
     }
 }
@@ -246,7 +233,7 @@ int DBCTableModel::rowCount(const QModelIndex &parent) const
 int DBCTableModel::columnCount(const QModelIndex &parent) const
 {
     Q_UNUSED(parent);
-    return m_dbc->GetFieldCount();
+    return m_dbc->GetFieldCount(true);
 }
 
 QVariant DBCTableModel::data(const QModelIndex &index, int role) const

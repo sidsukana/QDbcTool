@@ -12,26 +12,24 @@
 
 class DTForm;
 class DBCTableModel;
+class DBCFormat;
 
 class DTObject
 {
     public:
 
-        DTObject(DTForm* form = NULL);
+        DTObject(DTForm* form, DBCFormat* format);
         ~DTObject();
 
+        void Set(QString dbcName, QString dbcBuild);
         void Load();
-        inline QChar GetFieldType(quint32 field);
 
         quint32 GetRecordCount() { return m_recordCount; }
-        quint32 GetFieldCount() { return m_fieldCount; }
+        quint32 GetFieldCount(bool onlyVisible = false);
         quint32 GetRecordSize() { return m_recordSize; }
         quint32 GetStringSize() { return m_stringSize; }
         QString GetFileName() { return m_fileName; }
-        void SetFileName(QString name) { m_fileName = name; }
         void SetSaveFileName(QString name) { m_saveFileName = name; }
-        void SetBuild(QString build) { m_build = build; }
-        void LoadFormats();
 
         void ThreadBegin(quint8 id);
         void ThreadSet(quint8 id) { ThreadSemaphore[id] = true; }
@@ -55,12 +53,38 @@ class DTObject
         QString m_saveFileName;
         QString m_build;
 
-        QStringList m_fieldNames;
-        QStringList m_fieldTypes;
-
-        QDomDocument m_dbcFormats;
+        DBCFormat* m_format;
 
         bool ThreadSemaphore[MAX_THREAD];
+};
+
+struct DBCField
+{
+    QString name;
+    QString type;
+    bool visible;
+};
+
+class DBCFormat
+{
+    public:
+        DBCFormat(QString xmlFileName = QString());
+        ~DBCFormat();
+
+        void LoadFormat(QString dbcName, QString dbcBuild);
+        QStringList GetBuildList(QString fileName);
+        QStringList GetFieldNames(bool onlyVisible = false);
+        QStringList GetFieldTypes();
+        bool IsVisible(quint32 field) { return m_dbcFields.at(field).visible; }
+        char GetFieldType(quint32 field) { return m_dbcFields.at(field).type.at(0).toAscii(); }
+        QString GetFieldName(quint32 field) { return m_dbcFields.at(field).name; }
+        quint32 GetFieldCount(bool onlyVisible = false);
+
+    private:
+        QDomDocument m_xmlData;
+
+        QList<DBCField> m_dbcFields;
+
 };
 
 #endif // DTOBJECT_H

@@ -1,6 +1,99 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE DBC>
 <DBCFiles>
+ <AreaTable build="5785_6005">
+  <field type="uint" name="Id"/>
+  <field type="uint" name="MapId"/>
+  <field type="uint" name="ZoneId"/>
+  <field type="uint" name="ExploreFlag"/>
+  <field type="uint" name="Flags"/>
+  <field type="int" name="SoundProviderPref"/>
+  <field type="int" name="SoundProviderPrefUnderwater"/>
+  <field type="uint" name="AmbienceID"/>
+  <field type="uint" name="ZoneMusic"/>
+  <field type="uint" name="IntroSound"/>
+  <field type="int" name="AreaLevel"/>
+  <field type="string" name="AreaName_1"/>
+  <field type="string" name="AreaName_2" visible="false"/>
+  <field type="string" name="AreaName_3" visible="false"/>
+  <field type="string" name="AreaName_4" visible="false"/>
+  <field type="string" name="AreaName_5" visible="false"/>
+  <field type="string" name="AreaName_6" visible="false"/>
+  <field type="string" name="AreaName_7" visible="false"/>
+  <field type="string" name="AreaName_8" visible="false"/>
+  <field type="uint" name="AreaNameFlags"/>
+  <field type="uint" name="FactionGroupMask"/>
+  <field type="int" name="LiquidTypeID_1"/>
+  <field type="int" name="LiquidTypeID_2"/>
+  <field type="int" name="LiquidTypeID_3"/>
+  <field type="int" name="LiquidTypeID_4"/>
+ </AreaTable>
+ <WMOAreaTable build="5785_6005">
+  <field type="uint" name="Id"/>
+  <field type="int" name="Unk1"/>
+  <field type="int" name="Unk2"/>
+  <field type="int" name="Unk3"/>
+  <field type="int" name="Unk4"/>
+  <field type="int" name="Unk5"/>
+  <field type="int" name="Unk6"/>
+  <field type="int" name="Unk7"/>
+  <field type="int" name="Unk8"/>
+  <field type="int" name="Unk9"/>
+  <field type="uint" name="AreaTable_refId"/>
+  <field type="string" name="ZoneName_1"/>
+  <field type="string" name="ZoneName_2"/>
+  <field type="string" name="ZoneName_3"/>
+  <field type="string" name="ZoneName_4"/>
+  <field type="string" name="ZoneName_5"/>
+  <field type="string" name="ZoneName_6"/>
+  <field type="string" name="ZoneName_7"/>
+  <field type="string" name="ZoneName_8"/>
+  <field type="uint" name="ZoneNameFlags"/>
+ </WMOAreaTable>
+ <Map build="5785_6005">
+  <field type="uint" name="Id"/>
+  <field type="uint" name="WMO_refId"/>
+  <field type="uint" name="MapType"/>
+  <field type="uint" name="IsBattleground"/>
+  <field type="string" name="MapName_1"/>
+  <field type="string" name="MapName_2"/>
+  <field type="string" name="MapName_3"/>
+  <field type="string" name="MapName_4"/>
+  <field type="string" name="MapName_5"/>
+  <field type="string" name="MapName_6"/>
+  <field type="string" name="MapName_7"/>
+  <field type="string" name="MapName_8"/>
+  <field type="uint" name="MapNameFlags"/>
+  <field type="uint" name="MinLevel"/>
+  <field type="uint" name="MaxLevel"/>
+  <field type="uint" name="MaxPlayers"/>
+  <field type="int" name="Unk1"/>
+  <field type="float" name="Unk2"/>
+  <field type="float" name="Unk3"/>
+  <field type="uint" name="AreaTable_refId"/>
+  <field type="string" name="DescForHorde_1"/>
+  <field type="string" name="DescForHorde_2"/>
+  <field type="string" name="DescForHorde_3"/>
+  <field type="string" name="DescForHorde_4"/>
+  <field type="string" name="DescForHorde_5"/>
+  <field type="string" name="DescForHorde_6"/>
+  <field type="string" name="DescForHorde_7"/>
+  <field type="string" name="DescForHorde_8"/>
+  <field type="uint" name="Unk4"/>
+  <field type="string" name="DescForAlly_1"/>
+  <field type="string" name="DescForAlly_2"/>
+  <field type="string" name="DescForAlly_3"/>
+  <field type="string" name="DescForAlly_4"/>
+  <field type="string" name="DescForAlly_5"/>
+  <field type="string" name="DescForAlly_6"/>
+  <field type="string" name="DescForAlly_7"/>
+  <field type="string" name="DescForAlly_8"/>
+  <field type="uint" name="Unk5"/>
+  <field type="uint" name="LoadScreens_refId"/>
+  <field type="uint" name="Unk6"/>
+  <field type="uint" name="Unk7"/>
+  <field type="float" name="Unk8"/>
+ </Map>
  <SpellDuration build="5785_6005">
   <field type="int" name="Id"/>
   <field type="int" name="Duration1"/>
@@ -153,40 +246,40 @@
   <field type="uint" name="ActiveIconID"/>
   <field type="uint" name="SpellPriority"/>
   <field type="string" name="SpellName_1"/>
-  <field type="string" name="SpellName_2"/>
-  <field type="string" name="SpellName_3"/>
-  <field type="string" name="SpellName_4"/>
-  <field type="string" name="SpellName_5"/>
-  <field type="string" name="SpellName_6"/>
-  <field type="string" name="SpellName_7"/>
-  <field type="string" name="SpellName_8"/>
+  <field type="string" name="SpellName_2" visible="false"/>
+  <field type="string" name="SpellName_3" visible="false"/>
+  <field type="string" name="SpellName_4" visible="false"/>
+  <field type="string" name="SpellName_5" visible="false"/>
+  <field type="string" name="SpellName_6" visible="false"/>
+  <field type="string" name="SpellName_7" visible="false"/>
+  <field type="string" name="SpellName_8" visible="false"/>
   <field type="uint" name="SpellNameFlags"/>
   <field type="string" name="Rank_1"/>
-  <field type="string" name="Rank_2"/>
-  <field type="string" name="Rank_3"/>
-  <field type="string" name="Rank_4"/>
-  <field type="string" name="Rank_5"/>
-  <field type="string" name="Rank_6"/>
-  <field type="string" name="Rank_7"/>
-  <field type="string" name="Rank_8"/>
+  <field type="string" name="Rank_2" visible="false"/>
+  <field type="string" name="Rank_3" visible="false"/>
+  <field type="string" name="Rank_4" visible="false"/>
+  <field type="string" name="Rank_5" visible="false"/>
+  <field type="string" name="Rank_6" visible="false"/>
+  <field type="string" name="Rank_7" visible="false"/>
+  <field type="string" name="Rank_8" visible="false"/>
   <field type="uint" name="RankFlags"/>
   <field type="string" name="Description_1"/>
-  <field type="string" name="Description_2"/>
-  <field type="string" name="Description_3"/>
-  <field type="string" name="Description_4"/>
-  <field type="string" name="Description_5"/>
-  <field type="string" name="Description_6"/>
-  <field type="string" name="Description_7"/>
-  <field type="string" name="Description_8"/>
-  <field type="uint" name="DescriptionFlags"/>
+  <field type="string" name="Description_2" visible="false"/>
+  <field type="string" name="Description_3" visible="false"/>
+  <field type="string" name="Description_4" visible="false"/>
+  <field type="string" name="Description_5" visible="false"/>
+  <field type="string" name="Description_6" visible="false"/>
+  <field type="string" name="Description_7" visible="false"/>
+  <field type="string" name="Description_8" visible="false"/>
+  <field type="uint" name="DescriptionFlags" visible="false"/>
   <field type="string" name="ToolTip_1"/>
-  <field type="string" name="ToolTip_2"/>
-  <field type="string" name="ToolTip_3"/>
-  <field type="string" name="ToolTip_4"/>
-  <field type="string" name="ToolTip_5"/>
-  <field type="string" name="ToolTip_6"/>
-  <field type="string" name="ToolTip_7"/>
-  <field type="string" name="ToolTip_8"/>
+  <field type="string" name="ToolTip_2" visible="false"/>
+  <field type="string" name="ToolTip_3" visible="false"/>
+  <field type="string" name="ToolTip_4" visible="false"/>
+  <field type="string" name="ToolTip_5" visible="false"/>
+  <field type="string" name="ToolTip_6" visible="false"/>
+  <field type="string" name="ToolTip_7" visible="false"/>
+  <field type="string" name="ToolTip_8" visible="false"/>
   <field type="uint" name="ToolTipFlags"/>
   <field type="uint" name="ManaCostPercentage"/>
   <field type="uint" name="StartRecoveryCategory"/>

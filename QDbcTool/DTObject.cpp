@@ -6,21 +6,17 @@
 #include <QtCore/QTime>
 #include <QtCore/QTextStream>
 
-DTObject::DTObject(DTForm *form)
-    : m_form(form)
+DTObject::DTObject(DTForm *form, DBCFormat* format)
+    : m_form(form), m_format(format)
 {
     m_recordCount = 0;
     m_fieldCount = 0;
     m_recordSize = 0;
     m_stringSize = 0;
 
-    m_saveFileName = "";
     m_fileName = "";
+    m_saveFileName = "";
     m_build = "";
-
-    m_fieldNames.clear();
-    m_fieldTypes.clear();
-    m_dbcFormats.clear();
 
     for (quint8 i = 0; i < MAX_THREAD; i++)
         ThreadSemaphore[i] = false;
@@ -39,42 +35,19 @@ void DTObject::ThreadBegin(quint8 id)
     }
 }
 
-void DTObject::LoadFormats()
+quint32 DTObject::GetFieldCount(bool onlyVisible)
 {
-    if (!m_build.isEmpty())
-    {
-        QFileInfo finfo(m_fileName);
-
-        QFile xmlFile("dbcFormats.xml");
-        xmlFile.open(QIODevice::ReadOnly);
-        m_dbcFormats.setContent(&xmlFile);
-
-        QDomNodeList dbcNodes = m_dbcFormats.childNodes();
-
-        m_fieldNames.clear();
-        m_fieldTypes.clear();
-
-        for (quint32 i = 0; i < dbcNodes.count(); i++)
-	    {
-            if (m_dbcFormats.elementsByTagName(finfo.baseName()).item(i).toElement().attribute("build") == m_build)
-            {
-                QDomNodeList fieldNodes = m_dbcFormats.elementsByTagName(finfo.baseName()).item(i).childNodes();
-                for (quint32 j = 0; j < fieldNodes.count(); j++)
-                {
-                    m_fieldTypes.append(fieldNodes.item(j).toElement().attribute("type", "uint"));
-                    m_fieldNames.append(fieldNodes.item(j).toElement().attribute("name", QString("Field%0").arg(j+1)));
-                }
-            }
-	    }
-    }
+    return onlyVisible ? m_format->GetFieldCount(onlyVisible) : m_fieldCount;
 }
 
-inline QChar DTObject::GetFieldType(quint32 field)
+void DTObject::Set(QString dbcName, QString dbcBuild)
 {
-    if (!m_fieldTypes.isEmpty())
-        return m_fieldTypes.at(field).at(0);
+    m_fileName = dbcName;
+    m_build = dbcBuild;
+    m_saveFileName = "";
 
-    return QChar();
+    QFileInfo finfo(m_fileName);
+    m_format->LoadFormat(finfo.baseName(), m_build);
 }
 
 void DTObject::Load()
@@ -127,7 +100,7 @@ void DTObject::Load()
 
     DBCTableModel* model = new DBCTableModel(m_form, this);
     model->clear();
-    model->setFieldNames(m_fieldNames);
+    model->setFieldNames(m_format->GetFieldNames(true));
 
     QApplication::postEvent(m_form, new ProgressBar(m_recordCount - 1, BAR_SIZE));
 
@@ -136,7 +109,13 @@ void DTObject::Load()
         recordList.clear();
         for (quint32 j = 0; j < m_fieldCount; j++)
         {
-            switch (GetFieldType(j).toAscii())
+            if (!m_format->IsVisible(j))
+            {
+                offset += 4;
+                continue;
+            }
+
+            switch (m_format->GetFieldType(j))
             {
                 case 'u':
                 {
@@ -224,13 +203,14 @@ void DTObject::ExportAsCSV()
 
     QTextStream stream(&exportFile);
 
-    QString key = m_build + "/" + finfo.fileName();
-
     QApplication::postEvent(m_form, new ProgressBar(m_recordCount, BAR_SIZE));
     quint32 step = 0;
 
-    for (quint32 f = 0; f < m_fieldCount; f++)
-        stream << m_fieldNames.at(f) + ";";
+    QStringList fieldNames = m_format->GetFieldNames(true);
+    quint32 visibleFields = m_format->GetFieldCount(true);
+
+    for (quint32 f = 0; f < visibleFields; f++)
+        stream << fieldNames.at(f) + ";";
 
     stream << "\n";
 
@@ -240,9 +220,9 @@ void DTObject::ExportAsCSV()
     {
         QStringList dataList = dbcList.at(i);
 
-        for (quint32 j = 0; j < m_fieldCount; j++)
+        for (quint32 j = 0; j < visibleFields; j++)
         {
-            switch (GetFieldType(j).toAscii())
+            switch (m_format->GetFieldType(j))
             {
                 case 'u':
                 case 'i':
@@ -287,29 +267,31 @@ void DTObject::ExportAsSQL()
 
     QTextStream stream(&exportFile);
 
-    QString key = m_build + "/" + finfo.fileName();
+    quint32 visibleFields = m_format->GetFieldCount(true);
 
-    QApplication::postEvent(m_form, new ProgressBar(m_fieldCount+m_recordCount, BAR_SIZE));
+    QApplication::postEvent(m_form, new ProgressBar(visibleFields + m_recordCount, BAR_SIZE));
     quint32 step = 0;
 
+    QStringList fieldNames = m_format->GetFieldNames(true);
+
     stream << "CREATE TABLE `" + finfo.baseName() + "_dbc` (\n";
-    for (quint32 i = 0; i < m_fieldCount; i++)
+    for (quint32 i = 0; i < visibleFields; i++)
     {
-        QString endl = i < m_fieldCount-1 ? ",\n" : "\n";
-        switch (GetFieldType(i).toAscii())
+        QString endl = i < visibleFields-1 ? ",\n" : "\n";
+        switch (m_format->GetFieldType(i))
         {
             case 'u':
             case 'i':
-                stream << "\t`" + m_fieldNames.at(i) + "` bigint(20) NOT NULL default '0'" + endl;
+                stream << "\t`" + fieldNames.at(i) + "` bigint(20) NOT NULL default '0'" + endl;
                 break;
             case 'f':
-                stream << "\t`" + m_fieldNames.at(i) + "` float NOT NULL default '0'" + endl;
+                stream << "\t`" + fieldNames.at(i) + "` float NOT NULL default '0'" + endl;
                 break;
             case 's':
-                stream << "\t`" + m_fieldNames.at(i) + "` text NOT NULL" + endl;
+                stream << "\t`" + fieldNames.at(i) + "` text NOT NULL" + endl;
                 break;
             default:
-                stream << "\t`" + m_fieldNames.at(i) + "` bigint(20) NOT NULL default '0'" + endl;
+                stream << "\t`" + fieldNames.at(i) + "` bigint(20) NOT NULL default '0'" + endl;
                 break;
         }
         step++;
@@ -321,10 +303,10 @@ void DTObject::ExportAsSQL()
     for (quint32 i = 0; i < m_recordCount; i++)
     {
         stream << "INSERT INTO `" + finfo.baseName() + "_dbc` (";
-        for (quint32 f = 0; f < m_fieldCount; f++)
+        for (quint32 f = 0; f < visibleFields; f++)
         {
-            QString endl = f < m_fieldCount-1 ? "`, " : "`) VALUES (";
-            stream << "`" + m_fieldNames.at(f) + endl;
+            QString endl = f < visibleFields-1 ? "`, " : "`) VALUES (";
+            stream << "`" + fieldNames.at(f) + endl;
         }
         QStringList dataList = dbcList.at(i);
 
@@ -338,9 +320,9 @@ void DTObject::ExportAsSQL()
             }
         }
 
-        for (quint32 j = 0; j < m_fieldCount; j++)
+        for (quint32 j = 0; j < visibleFields; j++)
         {
-            if (j < m_fieldCount-1)
+            if (j < visibleFields-1)
                 stream << "'" + dataList.at(j) + "', ";
             else
                 stream << "'" + dataList.at(j) + "');\n";
@@ -354,4 +336,98 @@ void DTObject::ExportAsSQL()
     QApplication::postEvent(m_form, new SendText(m_form, 1, QString("Done!")));
 
     ThreadUnset(THREAD_EXPORT_SQL);
+}
+
+DBCFormat::DBCFormat(QString xmlFileName)
+{
+    QFile xmlFile(xmlFileName);
+    xmlFile.open(QIODevice::ReadOnly);
+    m_xmlData.setContent(&xmlFile);
+    xmlFile.close();
+}
+
+DBCFormat::~DBCFormat()
+{
+}
+
+QStringList DBCFormat::GetBuildList(QString fileName)
+{
+    QDomNodeList dbcNodes = m_xmlData.childNodes();
+    QStringList buildList;
+
+    for (quint32 i = 0; i < dbcNodes.count(); i++)
+        if (!m_xmlData.elementsByTagName(fileName).isEmpty())
+            buildList.append(m_xmlData.elementsByTagName(fileName).item(i).toElement().attribute("build"));
+
+    return buildList;
+}
+
+void DBCFormat::LoadFormat(QString dbcName, QString dbcBuild)
+{
+    QDomNodeList dbcNodes = m_xmlData.childNodes();
+
+    m_dbcFields.clear();
+
+    for (quint32 i = 0; i < dbcNodes.count(); i++)
+    {
+        QDomNodeList dbcExisted = m_xmlData.elementsByTagName(dbcName);
+        if (!dbcExisted.isEmpty())
+        {
+            if (dbcExisted.item(i).toElement().attribute("build") == dbcBuild)
+            {
+                QDomNodeList fieldNodes = m_xmlData.elementsByTagName(dbcName).item(i).childNodes();
+                for (quint32 j = 0; j < fieldNodes.count(); j++)
+                {
+                    DBCField field;
+                    field.type = fieldNodes.item(j).toElement().attribute("type", "uint");
+                    field.name = fieldNodes.item(j).toElement().attribute("name", QString("Field%0").arg(j+1));
+                    field.visible = fieldNodes.item(j).toElement().attribute("visible", "true") == QString("true") ? true : false;
+                    m_dbcFields.append(field);
+                }
+            }
+        }
+    }
+}
+
+quint32 DBCFormat::GetFieldCount(bool onlyVisible)
+{
+    quint32 count = 0;
+    for (QList<DBCField>::const_iterator itr = m_dbcFields.begin(); itr != m_dbcFields.end(); ++itr)
+    {
+        if (onlyVisible)
+        {
+            if (itr->visible)
+                count++;
+        }
+        else
+            count++;
+    }
+
+    return count;
+}
+
+QStringList DBCFormat::GetFieldNames(bool onlyVisible)
+{
+    QStringList fieldNames;
+    for (QList<DBCField>::const_iterator itr = m_dbcFields.begin(); itr != m_dbcFields.end(); ++itr)
+    {
+        if (onlyVisible)
+        {
+            if (itr->visible)
+                fieldNames.append(itr->name);
+        }
+        else
+            fieldNames.append(itr->name);
+    }
+
+    return fieldNames;
+}
+
+QStringList DBCFormat::GetFieldTypes()
+{
+    QStringList fieldTypes;
+    for (QList<DBCField>::const_iterator itr = m_dbcFields.begin(); itr != m_dbcFields.end(); ++itr)
+        fieldTypes.append(itr->type);
+
+    return fieldTypes;
 }
