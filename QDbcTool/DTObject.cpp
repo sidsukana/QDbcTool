@@ -165,21 +165,21 @@ void DTObject::Load()
 
                     if (value)
                     {
-                        char* ch = new char[1];
+                        QChar ch(' ');
 
                         quint32 length = 0;
 
-                        while (ch[0] != 0)
+                        while (!ch.isNull())
                         {
-                            ch[0] = stringBytes.at(value+length);
-                            if (ch[0] != 0)
+                            ch = stringBytes.at(value + length);
+                            if (!ch.isNull())
                                 length++;
                         }
 
                         recordList.append(QString("%0").arg(stringBytes.mid(value, length).data()));
                     }
                     else
-                        recordList.append(QString(""));
+                        recordList.append("");
 
                     offset += 4;
                 }
