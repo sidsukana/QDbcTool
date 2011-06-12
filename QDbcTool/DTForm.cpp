@@ -74,9 +74,15 @@ void DTForm::ApplyFilter()
 void DTForm::SlotSetVisible(QAction* action)
 {
     if (action->isChecked())
+    {
+        format->SetFieldVisible(action->data().toUInt(), true);
         tableView->showColumn(action->data().toUInt());
+    }
     else
+    {
+        format->SetFieldVisible(action->data().toUInt(), false);
         tableView->hideColumn(action->data().toUInt());
+    }
 }
 
 DBCSortedModel::DBCSortedModel(QObject *parent)

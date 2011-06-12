@@ -78,9 +78,16 @@ class DBCFormat
         bool IsVisible(quint32 field) { return m_dbcFields.at(field).visible; }
         char GetFieldType(quint32 field) { return m_dbcFields.at(field).type.at(0).toAscii(); }
         QString GetFieldName(quint32 field) { return m_dbcFields.at(field).name; }
+        void SetFieldVisible(quint32 field, bool on);
+        void SetFieldName(quint32 field, QString name);
+        void SetFieldType(quint32 field, QString type);
 
     private:
         QDomDocument m_xmlData;
+
+        QString m_fileName;
+        QString m_dbcName;
+        QString m_dbcBuild;
 
         QList<DBCField> m_dbcFields;
 

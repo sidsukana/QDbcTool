@@ -327,6 +327,7 @@ void DTObject::ExportAsSQL()
 DBCFormat::DBCFormat(QString xmlFileName)
 {
     QFile xmlFile(xmlFileName);
+    m_fileName = xmlFileName;
     xmlFile.open(QIODevice::ReadOnly);
     m_xmlData.setContent(&xmlFile);
     xmlFile.close();
@@ -351,6 +352,9 @@ QStringList DBCFormat::GetBuildList(QString fileName)
 void DBCFormat::LoadFormat(QString dbcName, QString dbcBuild)
 {
     QDomNodeList dbcNodes = m_xmlData.childNodes();
+
+    m_dbcName = dbcName;
+    m_dbcBuild = dbcBuild;
 
     m_dbcFields.clear();
 
@@ -391,4 +395,91 @@ QStringList DBCFormat::GetFieldTypes()
         fieldTypes.append(itr->type);
 
     return fieldTypes;
+}
+
+void DBCFormat::SetFieldVisible(quint32 field, bool on)
+{
+    // Save in QDocument
+    QDomNodeList dbcNodes = m_xmlData.childNodes();
+
+    for (quint32 i = 0; i < dbcNodes.count(); i++)
+    {
+        QDomNodeList dbcExisted = m_xmlData.elementsByTagName(m_dbcName);
+        if (!dbcExisted.isEmpty())
+        {
+            if (dbcExisted.item(i).toElement().attribute("build") == m_dbcBuild)
+            {
+                QDomNodeList fieldNodes = m_xmlData.elementsByTagName(m_dbcName).item(i).childNodes();
+                fieldNodes.item(field).toElement().setAttribute("visible", on ? "true" : "false");
+                break;
+            }
+        }
+    }
+
+    // Save to file
+    QFile xmlFile(m_fileName);
+    if (xmlFile.open(QIODevice::WriteOnly))
+    {
+        QTextStream stream(&xmlFile);
+        m_xmlData.save(stream, 0);
+        xmlFile.close();
+    }
+}
+
+void DBCFormat::SetFieldName(quint32 field, QString name)
+{
+    // Save in QDocument
+    QDomNodeList dbcNodes = m_xmlData.childNodes();
+
+    for (quint32 i = 0; i < dbcNodes.count(); i++)
+    {
+        QDomNodeList dbcExisted = m_xmlData.elementsByTagName(m_dbcName);
+        if (!dbcExisted.isEmpty())
+        {
+            if (dbcExisted.item(i).toElement().attribute("build") == m_dbcBuild)
+            {
+                QDomNodeList fieldNodes = m_xmlData.elementsByTagName(m_dbcName).item(i).childNodes();
+                fieldNodes.item(field).toElement().setAttribute("name", name);
+                break;
+            }
+        }
+    }
+
+    // Save to file
+    QFile xmlFile(m_fileName);
+    if (xmlFile.open(QIODevice::WriteOnly))
+    {
+        QTextStream stream(&xmlFile);
+        m_xmlData.save(stream, 0);
+        xmlFile.close();
+    }
+}
+
+void DBCFormat::SetFieldType(quint32 field, QString type)
+{
+    // Save in QDocument
+    QDomNodeList dbcNodes = m_xmlData.childNodes();
+
+    for (quint32 i = 0; i < dbcNodes.count(); i++)
+    {
+        QDomNodeList dbcExisted = m_xmlData.elementsByTagName(m_dbcName);
+        if (!dbcExisted.isEmpty())
+        {
+            if (dbcExisted.item(i).toElement().attribute("build") == m_dbcBuild)
+            {
+                QDomNodeList fieldNodes = m_xmlData.elementsByTagName(m_dbcName).item(i).childNodes();
+                fieldNodes.item(field).toElement().setAttribute("type", type);
+                break;
+            }
+        }
+    }
+
+    // Save to file
+    QFile xmlFile(m_fileName);
+    if (xmlFile.open(QIODevice::WriteOnly))
+    {
+        QTextStream stream(&xmlFile);
+        m_xmlData.save(stream, 0);
+        xmlFile.close();
+    }
 }
