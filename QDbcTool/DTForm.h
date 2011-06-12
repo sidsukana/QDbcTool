@@ -4,7 +4,11 @@
 #include <QtGui/QMainWindow>
 #include <QtGui/QDialog>
 #include <QtGui/QStatusBar>
+#include <QtGui/QToolButton>
+#include <QtGui/QProgressBar>
+#include <QtGui/QLabel>
 #include <QtCore/QAbstractTableModel>
+#include <QtCore/QSignalMapper>
 #include <QtGui/QSortFilterProxyModel>
 //#include <QtCore/QSettings>
 #include "ui_DTForm.h"
@@ -34,18 +38,24 @@ class DTForm : public QMainWindow, public Ui::DTFormUI
         bool event(QEvent *ev);
     
     public slots:
+        void SlotSetVisible(QAction*);
         void SlotOpenFile();
         void SlotExportAsSQL();
         void SlotExportAsCSV();
         void SlotAbout();
 
-private:
-    Ui::DTFormUI ui;
-    QStatusBar* statusBar;
-    DTObject* dbc;
-    DBCFormat* format;
-    //QSettings* config;
-    DBCSortedModel* proxyModel;
+    private:
+        void ApplyFilter();
+
+        Ui::DTFormUI ui;
+        DTObject* dbc;
+        DBCFormat* format;
+        //QSettings* config;
+        DBCSortedModel* proxyModel;
+
+        QProgressBar* progressBar;
+        QToolButton* fieldBox;
+        QLabel* statusText;
 };
 
 class DBCSortedModel : public QSortFilterProxyModel

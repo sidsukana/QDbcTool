@@ -35,11 +35,6 @@ void DTObject::ThreadBegin(quint8 id)
     }
 }
 
-quint32 DTObject::GetFieldCount(bool onlyVisible)
-{
-    return onlyVisible ? m_format->GetFieldCount(onlyVisible) : m_fieldCount;
-}
-
 void DTObject::Set(QString dbcName, QString dbcBuild)
 {
     m_fileName = dbcName;
@@ -100,7 +95,7 @@ void DTObject::Load()
 
     DBCTableModel* model = new DBCTableModel(m_form, this);
     model->clear();
-    model->setFieldNames(m_format->GetFieldNames(true));
+    model->setFieldNames(m_format->GetFieldNames());
 
     QApplication::postEvent(m_form, new ProgressBar(m_recordCount - 1, BAR_SIZE));
 
@@ -109,12 +104,6 @@ void DTObject::Load()
         recordList.clear();
         for (quint32 j = 0; j < m_fieldCount; j++)
         {
-            if (!m_format->IsVisible(j))
-            {
-                offset += 4;
-                continue;
-            }
-
             switch (m_format->GetFieldType(j))
             {
                 case 'u':
@@ -206,10 +195,9 @@ void DTObject::ExportAsCSV()
     QApplication::postEvent(m_form, new ProgressBar(m_recordCount, BAR_SIZE));
     quint32 step = 0;
 
-    QStringList fieldNames = m_format->GetFieldNames(true);
-    quint32 visibleFields = m_format->GetFieldCount(true);
+    QStringList fieldNames = m_format->GetFieldNames();
 
-    for (quint32 f = 0; f < visibleFields; f++)
+    for (quint32 f = 0; f < m_fieldCount; f++)
         stream << fieldNames.at(f) + ";";
 
     stream << "\n";
@@ -220,7 +208,7 @@ void DTObject::ExportAsCSV()
     {
         QStringList dataList = dbcList.at(i);
 
-        for (quint32 j = 0; j < visibleFields; j++)
+        for (quint32 j = 0; j < m_fieldCount; j++)
         {
             switch (m_format->GetFieldType(j))
             {
@@ -267,17 +255,15 @@ void DTObject::ExportAsSQL()
 
     QTextStream stream(&exportFile);
 
-    quint32 visibleFields = m_format->GetFieldCount(true);
-
-    QApplication::postEvent(m_form, new ProgressBar(visibleFields + m_recordCount, BAR_SIZE));
+    QApplication::postEvent(m_form, new ProgressBar(m_fieldCount + m_recordCount, BAR_SIZE));
     quint32 step = 0;
 
-    QStringList fieldNames = m_format->GetFieldNames(true);
+    QStringList fieldNames = m_format->GetFieldNames();
 
     stream << "CREATE TABLE `" + finfo.baseName() + "_dbc` (\n";
-    for (quint32 i = 0; i < visibleFields; i++)
+    for (quint32 i = 0; i < m_fieldCount; i++)
     {
-        QString endl = i < visibleFields-1 ? ",\n" : "\n";
+        QString endl = i < m_fieldCount-1 ? ",\n" : "\n";
         switch (m_format->GetFieldType(i))
         {
             case 'u':
@@ -303,9 +289,9 @@ void DTObject::ExportAsSQL()
     for (quint32 i = 0; i < m_recordCount; i++)
     {
         stream << "INSERT INTO `" + finfo.baseName() + "_dbc` (";
-        for (quint32 f = 0; f < visibleFields; f++)
+        for (quint32 f = 0; f < m_fieldCount; f++)
         {
-            QString endl = f < visibleFields-1 ? "`, " : "`) VALUES (";
+            QString endl = f < m_fieldCount-1 ? "`, " : "`) VALUES (";
             stream << "`" + fieldNames.at(f) + endl;
         }
         QStringList dataList = dbcList.at(i);
@@ -320,9 +306,9 @@ void DTObject::ExportAsSQL()
             }
         }
 
-        for (quint32 j = 0; j < visibleFields; j++)
+        for (quint32 j = 0; j < m_fieldCount; j++)
         {
-            if (j < visibleFields-1)
+            if (j < m_fieldCount-1)
                 stream << "'" + dataList.at(j) + "', ";
             else
                 stream << "'" + dataList.at(j) + "');\n";
@@ -389,36 +375,11 @@ void DBCFormat::LoadFormat(QString dbcName, QString dbcBuild)
     }
 }
 
-quint32 DBCFormat::GetFieldCount(bool onlyVisible)
-{
-    quint32 count = 0;
-    for (QList<DBCField>::const_iterator itr = m_dbcFields.begin(); itr != m_dbcFields.end(); ++itr)
-    {
-        if (onlyVisible)
-        {
-            if (itr->visible)
-                count++;
-        }
-        else
-            count++;
-    }
-
-    return count;
-}
-
-QStringList DBCFormat::GetFieldNames(bool onlyVisible)
+QStringList DBCFormat::GetFieldNames()
 {
     QStringList fieldNames;
     for (QList<DBCField>::const_iterator itr = m_dbcFields.begin(); itr != m_dbcFields.end(); ++itr)
-    {
-        if (onlyVisible)
-        {
-            if (itr->visible)
-                fieldNames.append(itr->name);
-        }
-        else
-            fieldNames.append(itr->name);
-    }
+        fieldNames.append(itr->name);
 
     return fieldNames;
 }

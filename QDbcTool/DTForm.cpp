@@ -15,13 +15,29 @@ DTForm::DTForm(QWidget *parent)
     format = new DBCFormat("dbcFormats.xml");
     dbc = new DTObject(this, format);
 
+    fieldBox = new QToolButton(this);
+    fieldBox->setText("Fields");
+    fieldBox->setPopupMode(QToolButton::InstantPopup);
+    fieldBox->setFixedSize(50, 20);
+
+    progressBar = new QProgressBar(this);
+    progressBar->setValue(0);
+    progressBar->setTextVisible(false);
+    progressBar->setTextDirection(QProgressBar::TopToBottom);
+    progressBar->setFixedSize(100, 20);
+
+    statusText = new QLabel("Ready!", this);
+    statusText->setFixedSize(100, 20);
+
+    mainToolBar->addWidget(progressBar);
+    mainToolBar->addSeparator();
+    mainToolBar->addWidget(fieldBox);
+    mainToolBar->addSeparator();
+    mainToolBar->addWidget(statusText);
+
     proxyModel = new DBCSortedModel(this);
     proxyModel->setDynamicSortFilter(true);
     tableView->setModel(proxyModel);
-
-    statusBar = new QStatusBar(this);
-    setStatusBar(statusBar);
-    statusBar->showMessage("Ready");
 
     //config = new QSettings("config.ini", QSettings::IniFormat, this);
 
@@ -32,6 +48,35 @@ DTForm::DTForm(QWidget *parent)
     connect(actionExport_as_CSV, SIGNAL(triggered()), this, SLOT(SlotExportAsCSV()));
 
     connect(actionAbout, SIGNAL(triggered()), this, SLOT(SlotAbout()));
+}
+
+void DTForm::ApplyFilter()
+{
+    for (QList<QAction*>::iterator itr = fieldBox->actions().begin(); itr != fieldBox->actions().end(); ++itr)
+        (*itr)->deleteLater();
+
+    for (quint32 i = 0; i < dbc->GetFieldCount(); i++)
+    {
+        if (!format->IsVisible(i))
+            tableView->hideColumn(i);
+
+        QAction* action = new QAction(this);
+        action->setText(format->GetFieldName(i));
+        action->setCheckable(true);
+        action->setChecked(format->IsVisible(i));
+        action->setData(i);
+
+        fieldBox->addAction(action);
+    }
+    connect(fieldBox, SIGNAL(triggered(QAction*)), this, SLOT(SlotSetVisible(QAction*)));
+}
+
+void DTForm::SlotSetVisible(QAction* action)
+{
+    if (action->isChecked())
+        tableView->showColumn(action->data().toUInt());
+    else
+        tableView->hideColumn(action->data().toUInt());
 }
 
 DBCSortedModel::DBCSortedModel(QObject *parent)
@@ -91,12 +136,12 @@ void DTForm::SlotExportAsSQL()
         if (!fileName.isEmpty())
         {
             dbc->SetSaveFileName(fileName);
-            statusBar->showMessage("Exporting to SQL file...");
+            statusText->setText("Exporting to SQL file...");
             dbc->ThreadBegin(THREAD_EXPORT_SQL);
         }
     }
     else
-        statusBar->showMessage("DBC not loaded! Please load DBC file!");
+        statusText->setText("DBC not loaded! Please load DBC file!");
 
 }
 
@@ -109,12 +154,12 @@ void DTForm::SlotExportAsCSV()
         if (!fileName.isEmpty())
         {
             dbc->SetSaveFileName(fileName);
-            statusBar->showMessage("Exporting to CSV file...");
+            statusText->setText("Exporting to CSV file...");
             dbc->ThreadBegin(THREAD_EXPORT_CSV);
         }
     }
     else
-        statusBar->showMessage("DBC not loaded! Please load DBC file!");
+        statusText->setText("DBC not loaded! Please load DBC file!");
 
 }
 
@@ -129,7 +174,7 @@ void DTForm::SlotOpenFile()
     QStringList buildList = format->GetBuildList(finfo.baseName());
     if (buildList.isEmpty())
     {
-        statusBar->showMessage("Builds with structure for this DBC not found!");
+        statusText->setText("Builds with structure for this DBC not found!");
         return;
     }
 
@@ -139,7 +184,7 @@ void DTForm::SlotOpenFile()
 
     if (build->exec() == QDialog::Accepted)
     {
-        statusBar->showMessage("Loading DBC file...");
+        statusText->setText("Loading DBC file...");
 
         DBCSortedModel* smodel = static_cast<DBCSortedModel*>(tableView->model());
         DBCTableModel* model = static_cast<DBCTableModel*>(smodel->sourceModel());
@@ -179,6 +224,7 @@ bool DTForm::event(QEvent *ev)
         {
             SendModel* m_ev = (SendModel*)ev;
             proxyModel->setSourceModel(m_ev->GetObject());
+            ApplyFilter();
             return true;
         }
         break;
@@ -188,7 +234,7 @@ bool DTForm::event(QEvent *ev)
             switch (m_ev->GetId())
             {
                 case 1:
-                    statusBar->showMessage(m_ev->GetText());
+                    statusText->setText(m_ev->GetText());
                     break;
                 default:
                     break;
@@ -233,7 +279,7 @@ int DBCTableModel::rowCount(const QModelIndex &parent) const
 int DBCTableModel::columnCount(const QModelIndex &parent) const
 {
     Q_UNUSED(parent);
-    return m_dbc->GetFieldCount(true);
+    return m_dbc->GetFieldCount();
 }
 
 QVariant DBCTableModel::data(const QModelIndex &index, int role) const

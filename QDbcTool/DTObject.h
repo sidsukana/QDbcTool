@@ -25,7 +25,7 @@ class DTObject
         void Load();
 
         quint32 GetRecordCount() { return m_recordCount; }
-        quint32 GetFieldCount(bool onlyVisible = false);
+        quint32 GetFieldCount() { return m_fieldCount; }
         quint32 GetRecordSize() { return m_recordSize; }
         quint32 GetStringSize() { return m_stringSize; }
         QString GetFileName() { return m_fileName; }
@@ -73,12 +73,11 @@ class DBCFormat
 
         void LoadFormat(QString dbcName, QString dbcBuild);
         QStringList GetBuildList(QString fileName);
-        QStringList GetFieldNames(bool onlyVisible = false);
+        QStringList GetFieldNames();
         QStringList GetFieldTypes();
         bool IsVisible(quint32 field) { return m_dbcFields.at(field).visible; }
         char GetFieldType(quint32 field) { return m_dbcFields.at(field).type.at(0).toAscii(); }
         QString GetFieldName(quint32 field) { return m_dbcFields.at(field).name; }
-        quint32 GetFieldCount(bool onlyVisible = false);
 
     private:
         QDomDocument m_xmlData;
