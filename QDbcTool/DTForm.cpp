@@ -63,7 +63,7 @@ void DTForm::ApplyFilter()
         QAction* action = new QAction(this);
         action->setText(format->GetFieldName(i));
         action->setCheckable(true);
-        action->setChecked(format->IsVisible(i));
+        action->setChecked(!format->IsVisible(i));
         action->setData(i);
 
         fieldBox->addAction(action);
@@ -75,13 +75,13 @@ void DTForm::SlotSetVisible(QAction* action)
 {
     if (action->isChecked())
     {
-        format->SetFieldVisible(action->data().toUInt(), true);
-        tableView->showColumn(action->data().toUInt());
+        format->SetFieldVisible(action->data().toUInt(), false);
+        tableView->hideColumn(action->data().toUInt());
     }
     else
     {
-        format->SetFieldVisible(action->data().toUInt(), false);
-        tableView->hideColumn(action->data().toUInt());
+        format->SetFieldVisible(action->data().toUInt(), true);
+        tableView->showColumn(action->data().toUInt());
     }
 }
 
