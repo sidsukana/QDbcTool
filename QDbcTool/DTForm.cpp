@@ -26,11 +26,14 @@ DTForm::DTForm(QWidget *parent)
     progressBar->setTextDirection(QProgressBar::TopToBottom);
     progressBar->setFixedSize(100, 20);
 
+    dbcInfo = new QLabel(this);
     statusText = new QLabel("Ready!", this);
 
     mainToolBar->addWidget(progressBar);
     mainToolBar->addSeparator();
     mainToolBar->addWidget(fieldBox);
+    mainToolBar->addSeparator();
+    mainToolBar->addWidget(dbcInfo);
     mainToolBar->addSeparator();
     mainToolBar->addWidget(statusText);
 
@@ -176,27 +179,44 @@ void DTForm::SlotOpenFile()
         return;
 
     QFileInfo finfo(fileName);
+
     QStringList buildList = format->GetBuildList(finfo.baseName());
-    if (buildList.isEmpty())
+    if (!buildList.isEmpty())
     {
-        statusText->setText("Builds with structure for this DBC not found!");
-        return;
+        DTBuild* build = new DTBuild;
+        build->comboBox->clear();
+        build->comboBox->addItems(buildList);
+
+        if (build->exec() == QDialog::Accepted)
+        {
+            dbcInfo->setText(QString(" <b>Name:</b> <font color=green>%0</font> <b>Build:</b> <font color=green>%1</font> ")
+                .arg(finfo.baseName())
+                .arg(build->comboBox->currentText()));
+
+            statusText->setText("Loading DBC file...");
+
+            DBCSortedModel* smodel = static_cast<DBCSortedModel*>(tableView->model());
+            DBCTableModel* model = static_cast<DBCTableModel*>(smodel->sourceModel());
+            if (model)
+                delete model;
+
+            dbc->Set(fileName, build->comboBox->currentText());
+            dbc->ThreadBegin(THREAD_OPENFILE);
+        }
     }
-
-    DTBuild* build = new DTBuild;
-    build->comboBox->clear();
-    build->comboBox->addItems(buildList);
-
-    if (build->exec() == QDialog::Accepted)
+    else
     {
-        statusText->setText("Loading DBC file...");
+        dbcInfo->setText(QString(" <b>Name:</b> <font color=green>%0</font> <b>Build:</b> <font color=green>Unknown</font> ")
+                .arg(finfo.baseName()));
+
+        statusText->setText("Loading unknown DBC file with default format...");
 
         DBCSortedModel* smodel = static_cast<DBCSortedModel*>(tableView->model());
         DBCTableModel* model = static_cast<DBCTableModel*>(smodel->sourceModel());
         if (model)
             delete model;
 
-        dbc->Set(fileName, build->comboBox->currentText());
+        dbc->Set(fileName);
         dbc->ThreadBegin(THREAD_OPENFILE);
     }
 }

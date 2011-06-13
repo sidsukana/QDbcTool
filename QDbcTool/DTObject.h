@@ -21,7 +21,7 @@ class DTObject
         DTObject(DTForm* form, DBCFormat* format);
         ~DTObject();
 
-        void Set(QString dbcName, QString dbcBuild);
+        void Set(QString dbcName, QString dbcBuild = "Unknown");
         void Load();
 
         quint32 GetRecordCount() { return m_recordCount; }
@@ -72,6 +72,7 @@ class DBCFormat
         ~DBCFormat();
 
         void LoadFormat(QString dbcName, QString dbcBuild);
+        void LoadFormat(QString dbcName, quint32 fieldCount);
         QStringList GetBuildList(QString fileName);
         QStringList GetFieldNames();
         QStringList GetFieldTypes();

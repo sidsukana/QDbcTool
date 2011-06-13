@@ -40,9 +40,6 @@ void DTObject::Set(QString dbcName, QString dbcBuild)
     m_fileName = dbcName;
     m_build = dbcBuild;
     m_saveFileName = "";
-
-    QFileInfo finfo(m_fileName);
-    m_format->LoadFormat(finfo.baseName(), m_build);
 }
 
 void DTObject::Load()
@@ -79,6 +76,13 @@ void DTObject::Load()
         ThreadUnset(THREAD_OPENFILE);
         return;
     }
+
+    // Load format
+    QFileInfo finfo(m_fileName);
+    if (m_build != "Unknown")
+        m_format->LoadFormat(finfo.baseName(), m_build);
+    else
+        m_format->LoadFormat(finfo.baseName(), m_fieldCount);
 
     QByteArray  dataBytes;
     QByteArray  stringBytes;
@@ -144,7 +148,7 @@ void DTObject::Load()
                                 length++;
                         }
 
-                        recordList.append(QString("%0").arg(stringBytes.mid(value, length).data()));
+                        recordList.append(QString("%0").arg(QString::fromUtf8(stringBytes.mid(value, length).data())));
                     }
                     else
                         recordList.append("");
@@ -349,6 +353,23 @@ QStringList DBCFormat::GetBuildList(QString fileName)
     return buildList;
 }
 
+void DBCFormat::LoadFormat(QString dbcName, quint32 fieldCount)
+{
+    m_dbcName = dbcName;
+    m_dbcBuild = "Unknown";
+
+    m_dbcFields.clear();
+
+    for (quint32 i = 0; i < fieldCount; i++)
+    {
+        DBCField field;
+        field.type = "uint";
+        field.name = QString("Field%0").arg(i+1);
+        field.visible = true;
+        m_dbcFields.append(field);
+    }
+}
+
 void DBCFormat::LoadFormat(QString dbcName, QString dbcBuild)
 {
     QDomNodeList dbcNodes = m_xmlData.childNodes();
@@ -399,6 +420,9 @@ QStringList DBCFormat::GetFieldTypes()
 
 void DBCFormat::SetFieldAttribute(quint32 field, QString attr, QString value)
 {
+    if (m_dbcBuild == "Unknown")
+        return;
+
     // Set in QDocument
     QDomNodeList dbcNodes = m_xmlData.childNodes();
 

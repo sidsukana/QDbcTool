@@ -56,6 +56,7 @@ class DTForm : public QMainWindow, public Ui::DTFormUI
         QProgressBar* progressBar;
         QToolButton* fieldBox;
         QLabel* statusText;
+        QLabel* dbcInfo;
 };
 
 class DBCSortedModel : public QSortFilterProxyModel
