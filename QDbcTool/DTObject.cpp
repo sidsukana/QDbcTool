@@ -397,9 +397,9 @@ QStringList DBCFormat::GetFieldTypes()
     return fieldTypes;
 }
 
-void DBCFormat::SetFieldVisible(quint32 field, bool on)
+void DBCFormat::SetFieldAttribute(quint32 field, QString attr, QString value)
 {
-    // Save in QDocument
+    // Set in QDocument
     QDomNodeList dbcNodes = m_xmlData.childNodes();
 
     for (quint32 i = 0; i < dbcNodes.count(); i++)
@@ -410,65 +410,7 @@ void DBCFormat::SetFieldVisible(quint32 field, bool on)
             if (dbcExisted.item(i).toElement().attribute("build") == m_dbcBuild)
             {
                 QDomNodeList fieldNodes = m_xmlData.elementsByTagName(m_dbcName).item(i).childNodes();
-                fieldNodes.item(field).toElement().setAttribute("visible", on ? "true" : "false");
-                break;
-            }
-        }
-    }
-
-    // Save to file
-    QFile xmlFile(m_fileName);
-    if (xmlFile.open(QIODevice::WriteOnly))
-    {
-        QTextStream stream(&xmlFile);
-        m_xmlData.save(stream, 0);
-        xmlFile.close();
-    }
-}
-
-void DBCFormat::SetFieldName(quint32 field, QString name)
-{
-    // Save in QDocument
-    QDomNodeList dbcNodes = m_xmlData.childNodes();
-
-    for (quint32 i = 0; i < dbcNodes.count(); i++)
-    {
-        QDomNodeList dbcExisted = m_xmlData.elementsByTagName(m_dbcName);
-        if (!dbcExisted.isEmpty())
-        {
-            if (dbcExisted.item(i).toElement().attribute("build") == m_dbcBuild)
-            {
-                QDomNodeList fieldNodes = m_xmlData.elementsByTagName(m_dbcName).item(i).childNodes();
-                fieldNodes.item(field).toElement().setAttribute("name", name);
-                break;
-            }
-        }
-    }
-
-    // Save to file
-    QFile xmlFile(m_fileName);
-    if (xmlFile.open(QIODevice::WriteOnly))
-    {
-        QTextStream stream(&xmlFile);
-        m_xmlData.save(stream, 0);
-        xmlFile.close();
-    }
-}
-
-void DBCFormat::SetFieldType(quint32 field, QString type)
-{
-    // Save in QDocument
-    QDomNodeList dbcNodes = m_xmlData.childNodes();
-
-    for (quint32 i = 0; i < dbcNodes.count(); i++)
-    {
-        QDomNodeList dbcExisted = m_xmlData.elementsByTagName(m_dbcName);
-        if (!dbcExisted.isEmpty())
-        {
-            if (dbcExisted.item(i).toElement().attribute("build") == m_dbcBuild)
-            {
-                QDomNodeList fieldNodes = m_xmlData.elementsByTagName(m_dbcName).item(i).childNodes();
-                fieldNodes.item(field).toElement().setAttribute("type", type);
+                fieldNodes.item(field).toElement().setAttribute(attr, value);
                 break;
             }
         }

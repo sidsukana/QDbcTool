@@ -27,7 +27,6 @@ DTForm::DTForm(QWidget *parent)
     progressBar->setFixedSize(100, 20);
 
     statusText = new QLabel("Ready!", this);
-    statusText->setFixedSize(100, 20);
 
     mainToolBar->addWidget(progressBar);
     mainToolBar->addSeparator();
@@ -75,12 +74,12 @@ void DTForm::SlotSetVisible(QAction* action)
 {
     if (action->isChecked())
     {
-        format->SetFieldVisible(action->data().toUInt(), false);
+        format->SetFieldAttribute(action->data().toUInt(), "visible", "false");
         tableView->hideColumn(action->data().toUInt());
     }
     else
     {
-        format->SetFieldVisible(action->data().toUInt(), true);
+        format->SetFieldAttribute(action->data().toUInt(), "visible", "true");
         tableView->showColumn(action->data().toUInt());
     }
 }
