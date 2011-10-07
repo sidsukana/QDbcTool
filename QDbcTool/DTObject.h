@@ -39,6 +39,7 @@ class DTObject
         // Export methods
         void ExportAsSQL();
         void ExportAsCSV();
+        void WriteDBC();
 
         bool isEmpty() { return (m_fileName.isEmpty() && m_build.isEmpty()); }
     private:

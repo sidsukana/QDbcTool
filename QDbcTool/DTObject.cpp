@@ -180,6 +180,111 @@ void DTObject::Load()
     ThreadUnset(THREAD_OPENFILE);
 }
 
+void DTObject::WriteDBC()
+{
+    ThreadSet(THREAD_WRITE_DBC);
+
+    DBCSortedModel* smodel = static_cast<DBCSortedModel*>(m_form->tableView->model());
+    DBCTableModel* model = static_cast<DBCTableModel*>(smodel->sourceModel());
+    if (!model)
+        return;
+
+    QFileInfo finfo(m_fileName);
+
+    QFile exportFile(m_saveFileName);
+    exportFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
+
+    QDataStream stream(&exportFile);
+    stream.setByteOrder(QDataStream::LittleEndian);
+
+    QApplication::postEvent(m_form, new ProgressBar(m_recordCount, BAR_SIZE));
+    quint32 step = 0;
+
+    QList<QStringList> dbcList = model->getDbcList();
+
+    // <String value, Offset value>
+    QMap<QString, quint32> stringMap;
+
+    QByteArray stringBytes;
+    stringBytes.append('\0');
+
+    quint32 recordCount = dbcList.size();
+    quint32 fieldCount = dbcList.at(0).size();
+    quint32 recordSize = fieldCount * 4;
+
+    stream << quint32(0x43424457);
+    stream << quint32(recordCount);
+    stream << quint32(fieldCount);
+    stream << quint32(recordSize);
+
+    for (quint32 i = 0; i < recordCount; i++)
+    {
+        QStringList dataList = dbcList.at(i);
+
+        for (quint32 j = 0; j < fieldCount; j++)
+        {
+            switch (m_format->GetFieldType(j))
+            {
+                case 's':
+                {
+                    if (!stringMap.contains(dataList.at(j)))
+                    {
+                        stringMap[dataList.at(j)] = stringBytes.size();
+                        stringBytes.append(dataList.at(j));
+                        stringBytes.append('\0');
+                    }
+                    else
+                        continue;
+                    break;
+                }
+                default:
+                    break;
+            }
+        }
+    }
+
+    stream << quint32(stringBytes.size());
+
+    for (quint32 i = 0; i < m_recordCount; i++)
+    {
+        QStringList dataList = dbcList.at(i);
+
+        for (quint32 j = 0; j < m_fieldCount; j++)
+        {
+            switch (m_format->GetFieldType(j))
+            {
+                case 'u':
+                    stream << dataList.at(j).toUInt();
+                    break;
+                case 'i':
+                    stream << dataList.at(j).toInt();
+                    break;
+                case 'f':
+                    stream << dataList.at(j).toFloat();
+                    break;
+                case 's':
+                    stream << quint32(stringMap.value(dataList.at(j)));
+                    break;
+                default:
+                    stream << dataList.at(j).toUInt();
+                    break;
+            }
+        }
+
+        step++;
+        QApplication::postEvent(m_form, new ProgressBar(step, BAR_STEP));
+    }
+
+    for (quint32 i = 0; i < stringBytes.size(); i++)
+        stream << quint8(stringBytes.at(i));
+
+    exportFile.close();
+
+    QApplication::postEvent(m_form, new SendText(m_form, 1, QString("Done!")));
+
+    ThreadUnset(THREAD_WRITE_DBC);
+}
+
 void DTObject::ExportAsCSV()
 {
     ThreadSet(THREAD_EXPORT_CSV);

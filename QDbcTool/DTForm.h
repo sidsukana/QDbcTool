@@ -42,6 +42,7 @@ class DTForm : public QMainWindow, public Ui::DTFormUI
         void SlotOpenFile();
         void SlotExportAsSQL();
         void SlotExportAsCSV();
+        void SlotWriteDBC();
         void SlotAbout();
 
     private:
@@ -108,6 +109,7 @@ public:
     int columnCount(const QModelIndex &parent) const;
     QVariant data(const QModelIndex &index, int role) const;
     QVariant headerData(int section, Qt::Orientation orientation, int role) const;
+    bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole);
     void setFieldNames(QStringList strl) { m_fieldNames = strl; }
     Qt::ItemFlags flags(const QModelIndex &index) const;
     void appendRecord(QStringList strl) { m_dbcList << strl; }

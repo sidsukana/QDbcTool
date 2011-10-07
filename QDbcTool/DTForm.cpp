@@ -49,6 +49,8 @@ DTForm::DTForm(QWidget *parent)
     connect(actionExport_as_SQL, SIGNAL(triggered()), this, SLOT(SlotExportAsSQL()));
     connect(actionExport_as_CSV, SIGNAL(triggered()), this, SLOT(SlotExportAsCSV()));
 
+    connect(actionWrite_DBC, SIGNAL(triggered()), this, SLOT(SlotWriteDBC()));
+
     connect(actionAbout, SIGNAL(triggered()), this, SLOT(SlotAbout()));
 }
 
@@ -164,6 +166,24 @@ void DTForm::SlotExportAsCSV()
             dbc->SetSaveFileName(fileName);
             statusText->setText("Exporting to CSV file...");
             dbc->ThreadBegin(THREAD_EXPORT_CSV);
+        }
+    }
+    else
+        statusText->setText("DBC not loaded! Please load DBC file!");
+
+}
+
+void DTForm::SlotWriteDBC()
+{
+    if (!dbc->isEmpty())
+    {
+        QString fileName = QFileDialog::getSaveFileName(this, "Save as DBC file", ".", "DBC File (*.dbc)");
+
+        if (!fileName.isEmpty())
+        {
+            dbc->SetSaveFileName(fileName);
+            statusText->setText("Writing DBC file...");
+            dbc->ThreadBegin(THREAD_WRITE_DBC);
         }
     }
     else
@@ -322,6 +342,30 @@ QVariant DBCTableModel::data(const QModelIndex &index, int role) const
         return m_dbcList.at(index.row()).at(index.column());
 
     return QVariant();
+}
+
+bool DBCTableModel::setData(const QModelIndex &index, const QVariant &value, int role)
+{
+    if (m_dbcList.isEmpty())
+        return false;
+
+    if (!index.isValid())
+        return false;
+
+    if (index.row() >= m_dbcList.size() || index.row() < 0)
+        return false;
+
+    if (role == Qt::EditRole)
+    {
+        QStringList p = m_dbcList.at(index.row());
+        p.replace(index.column(), value.toString());
+        m_dbcList.replace(index.row(), p);
+        emit(dataChanged(index, index));
+
+        return true;
+    }
+
+    return false;
 }
 
 QVariant DBCTableModel::headerData(int section, Qt::Orientation orientation, int role) const

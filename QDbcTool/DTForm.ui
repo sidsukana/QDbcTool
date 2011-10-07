@@ -82,6 +82,7 @@
     <addaction name="separator"/>
     <addaction name="actionExport_as_SQL"/>
     <addaction name="actionExport_as_CSV"/>
+    <addaction name="actionWrite_DBC"/>
     <addaction name="separator"/>
     <addaction name="actionExit"/>
    </widget>
@@ -133,6 +134,11 @@
   <action name="actionExport_as_CSV">
    <property name="text">
     <string>Export as CSV</string>
+   </property>
+  </action>
+  <action name="actionWrite_DBC">
+   <property name="text">
+    <string>Write DBC</string>
    </property>
   </action>
  </widget>
