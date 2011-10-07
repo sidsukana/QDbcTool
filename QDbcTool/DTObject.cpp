@@ -233,7 +233,7 @@ void DTObject::WriteDBC()
                     if (!stringMap.contains(dataList.at(j)))
                     {
                         stringMap[dataList.at(j)] = stringBytes.size();
-                        stringBytes.append(dataList.at(j));
+                        stringBytes.append(dataList.at(j).toUtf8());
                         stringBytes.append('\0');
                     }
                     else
