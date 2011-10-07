@@ -227,6 +227,9 @@ void DTObject::WriteDBC()
             {
                 case 's':
                 {
+                    if (dataList.at(j).isEmpty())
+                        continue;
+
                     if (!stringMap.contains(dataList.at(j)))
                     {
                         stringMap[dataList.at(j)] = stringBytes.size();
@@ -245,28 +248,34 @@ void DTObject::WriteDBC()
 
     stream << quint32(stringBytes.size());
 
-    for (quint32 i = 0; i < m_recordCount; i++)
+    for (quint32 i = 0; i < recordCount; i++)
     {
         QStringList dataList = dbcList.at(i);
 
-        for (quint32 j = 0; j < m_fieldCount; j++)
+        for (quint32 j = 0; j < fieldCount; j++)
         {
             switch (m_format->GetFieldType(j))
             {
                 case 'u':
-                    stream << dataList.at(j).toUInt();
+                    stream << quint32(dataList.at(j).toUInt());
                     break;
                 case 'i':
-                    stream << dataList.at(j).toInt();
+                    stream << quint32(dataList.at(j).toInt());
                     break;
                 case 'f':
-                    stream << dataList.at(j).toFloat();
+                {
+                    float value = dataList.at(j).toFloat();
+                    stream << (quint32&)value;
                     break;
+                }
                 case 's':
-                    stream << quint32(stringMap.value(dataList.at(j)));
+                    if (dataList.at(j).isEmpty())
+                        stream << quint32(0);
+                    else
+                        stream << quint32(stringMap.value(dataList.at(j)));
                     break;
                 default:
-                    stream << dataList.at(j).toUInt();
+                    stream << quint32(dataList.at(j).toUInt());
                     break;
             }
         }
