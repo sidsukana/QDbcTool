@@ -79,7 +79,7 @@ void DTObject::Load()
 
     // Load format
     QFileInfo finfo(m_fileName);
-    if (m_build != "Unknown")
+    if (m_build != "Default")
         m_format->LoadFormat(finfo.baseName(), m_build);
     else
         m_format->LoadFormat(finfo.baseName(), m_fieldCount);
@@ -460,6 +460,8 @@ QStringList DBCFormat::GetBuildList(QString fileName)
     QDomNodeList dbcNodes = m_xmlData.childNodes();
     QStringList buildList;
 
+    buildList.append("Default");
+
     for (quint32 i = 0; i < dbcNodes.count(); i++)
         if (!m_xmlData.elementsByTagName(fileName).isEmpty())
             buildList.append(m_xmlData.elementsByTagName(fileName).item(i).toElement().attribute("build"));
@@ -470,7 +472,7 @@ QStringList DBCFormat::GetBuildList(QString fileName)
 void DBCFormat::LoadFormat(QString dbcName, quint32 fieldCount)
 {
     m_dbcName = dbcName;
-    m_dbcBuild = "Unknown";
+    m_dbcBuild = "Default";
 
     m_dbcFields.clear();
 
@@ -534,7 +536,7 @@ QStringList DBCFormat::GetFieldTypes()
 
 void DBCFormat::SetFieldAttribute(quint32 field, QString attr, QString value)
 {
-    if (m_dbcBuild == "Unknown")
+    if (m_dbcBuild == "Default")
         return;
 
     // Set in QDocument
