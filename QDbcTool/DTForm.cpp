@@ -51,7 +51,51 @@ DTForm::DTForm(QWidget *parent)
 
     connect(actionWrite_DBC, SIGNAL(triggered()), this, SLOT(SlotWriteDBC()));
 
+    connect(tableView, SIGNAL(customContextMenuRequested(const QPoint&)), this, SLOT(SlotCustomContextMenu(const QPoint&)));
+
     connect(actionAbout, SIGNAL(triggered()), this, SLOT(SlotAbout()));
+}
+
+void DTForm::SlotRemoveRecord()
+{
+    DBCSortedModel* smodel = static_cast<DBCSortedModel*>(tableView->model());
+    DBCTableModel* model = static_cast<DBCTableModel*>(smodel->sourceModel());
+
+    if (!model)
+        return;
+
+    model->removeRow(tableView->currentIndex().row());
+}
+
+bool DBCTableModel::removeRow(int row, const QModelIndex& parent)
+{
+    if (m_dbcList.isEmpty())
+        return false;
+
+    if (row >= m_dbcList.size() || row < 0)
+        return false;
+
+    m_dbcList.removeAt(row);
+    m_dbc->SetRecordCount(m_dbcList.size());
+    return true;
+}
+
+void DTForm::SlotCustomContextMenu(const QPoint& pos)
+{
+    QModelIndex index = tableView->indexAt(pos);
+    QMenu* menu = new QMenu(this);
+
+    QAction* add = new QAction("Add record (not implemented)", this);
+
+    QAction* remove = new QAction("Remove record (not implemented)", this);
+    connect(remove, SIGNAL(triggered()), this, SLOT(SlotRemoveRecord()));
+
+    QAction* ai = new QAction(QString("Row %0, Col %1").arg(index.row()).arg(index.column()), this);
+
+    menu->addAction(add);
+    menu->addAction(remove);
+    menu->addAction(ai);
+    menu->popup(tableView->viewport()->mapToGlobal(pos));
 }
 
 void DTForm::ApplyFilter()
@@ -338,7 +382,7 @@ QVariant DBCTableModel::data(const QModelIndex &index, int role) const
     if (index.row() >= m_dbcList.size() || index.row() < 0)
         return QVariant();
 
-    if (role == Qt::DisplayRole)
+    if (role == Qt::DisplayRole || role == Qt::EditRole)
         return m_dbcList.at(index.row()).at(index.column());
 
     return QVariant();

@@ -44,6 +44,8 @@ class DTForm : public QMainWindow, public Ui::DTFormUI
         void SlotExportAsCSV();
         void SlotWriteDBC();
         void SlotAbout();
+        void SlotCustomContextMenu(const QPoint& pos);
+        void SlotRemoveRecord();
 
     private:
         void ApplyFilter();
@@ -105,6 +107,7 @@ public:
     DBCTableModel(QObject *parent = 0, DTObject *dbc = NULL);
     DBCTableModel(DBCList dbcList, QObject *parent = 0, DTObject *dbc = NULL);
 
+    bool removeRow(int row, const QModelIndex& parent = QModelIndex());
     int rowCount(const QModelIndex &parent) const;
     int columnCount(const QModelIndex &parent) const;
     QVariant data(const QModelIndex &index, int role) const;

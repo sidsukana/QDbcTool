@@ -21,9 +21,10 @@ class DTObject
         DTObject(DTForm* form, DBCFormat* format);
         ~DTObject();
 
-        void Set(QString dbcName, QString dbcBuild = "Unknown");
+        void Set(QString dbcName, QString dbcBuild = "Default");
         void Load();
 
+        void SetRecordCount(quint32 count) { m_recordCount = count; }
         quint32 GetRecordCount() { return m_recordCount; }
         quint32 GetFieldCount() { return m_fieldCount; }
         quint32 GetRecordSize() { return m_recordSize; }
