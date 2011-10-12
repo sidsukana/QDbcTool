@@ -58,17 +58,19 @@ void DTObject::Load()
         return;
     }
 
-    // Head bytes
-    QByteArray head;
-    head = m_file.read(20);
+    QDataStream stream(&m_file);
+    stream.setByteOrder(QDataStream::LittleEndian);
 
     quint32 m_header;
 
-    m_header        = *reinterpret_cast<quint32*>(head.mid(0, 4).data());
-    m_recordCount   = *reinterpret_cast<quint32*>(head.mid(4, 4).data());
-    m_fieldCount    = *reinterpret_cast<quint32*>(head.mid(8, 4).data());
-    m_recordSize    = *reinterpret_cast<quint32*>(head.mid(12, 4).data());
-    m_stringSize    = *reinterpret_cast<quint32*>(head.mid(16, 4).data());
+    stream >> m_header >> m_recordCount >> m_fieldCount >> m_recordSize >> m_stringSize;
+
+    // String bytes
+    QByteArray stringBytes;
+    stringBytes = m_file.readAll().right(m_stringSize);
+
+    // Reset to begin data block
+    m_file.seek(20);
 
     // Check 'WDBC'
     if (m_header != 0x43424457)
@@ -84,22 +86,18 @@ void DTObject::Load()
     else
         m_format->LoadFormat(finfo.baseName(), m_fieldCount);
 
-    QByteArray  dataBytes;
-    QByteArray  stringBytes;
     QStringList recordList;
-    quint32 offset = 0;
+    QList<QStringList> dbcList;
 
-    // Data bytes
-    m_file.seek(20);
-    dataBytes = m_file.read(m_recordSize * m_recordCount);
+    QList<QByteArray> stringsList = stringBytes.split('\0');
+    QMap<quint32, QString> stringsMap;
+    qint32 off = -1;
 
-    // String bytes
-    m_file.seek(20 + m_recordSize * m_recordCount);
-    stringBytes = m_file.read(m_stringSize);
-
-    DBCTableModel* model = new DBCTableModel(m_form, this);
-    model->clear();
-    model->setFieldNames(m_format->GetFieldNames());
+    for (QList<QByteArray>::iterator itr = stringsList.begin(); itr != stringsList.end(); ++itr)
+    {
+        stringsMap[off + 1] = QString::fromUtf8((*itr).data());
+        off += (*itr).size() + 1;
+    }
 
     QApplication::postEvent(m_form, new ProgressBar(m_recordCount - 1, BAR_SIZE));
 
@@ -112,62 +110,48 @@ void DTObject::Load()
             {
                 case 'u':
                 {
-                    quint32 value = *reinterpret_cast<quint32*>(dataBytes.mid(offset, 4).data());
-                    recordList.append(QString("%0").arg(value));
-                    offset += 4;
+                    quint32 value;
+                    stream >> value;
+                    recordList << QString("%0").arg(value);
                 }
                 break;
                 case 'i':
                 {
-                    qint32 value = *reinterpret_cast<qint32*>(dataBytes.mid(offset, 4).data());
-                    recordList.append(QString("%0").arg(value));
-                    offset += 4;
+                    qint32 value;
+                    stream >> value;
+                    recordList << QString("%0").arg(value);
                 }
                 break;
                 case 'f':
                 {
-                    float value = *reinterpret_cast<float*>(dataBytes.mid(offset, 4).data());
-                    recordList.append(QString("%0").arg(value));
-                    offset += 4;
+                    quint32 value;
+                    stream >> value;
+                    float fvalue = (float&)value;
+                    recordList << QString("%0").arg(fvalue);
                 }
                 break;
                 case 's':
                 {
-                    quint32 value = *reinterpret_cast<quint32*>(dataBytes.mid(offset, 4).data());
-
-                    if (value)
-                    {
-                        QChar ch(' ');
-
-                        quint32 length = 0;
-
-                        while (!ch.isNull())
-                        {
-                            ch = stringBytes.at(value + length);
-                            if (!ch.isNull())
-                                length++;
-                        }
-
-                        recordList.append(QString("%0").arg(QString::fromUtf8(stringBytes.mid(value, length).data())));
-                    }
-                    else
-                        recordList.append("");
-
-                    offset += 4;
+                    quint32 value;
+                    stream >> value;
+                    recordList << stringsMap[value];
                 }
                 break;
                 default:
                 {
-                    quint32 value = *reinterpret_cast<quint32*>(dataBytes.mid(offset, 4).data());
-                    recordList.append(QString("%0").arg(value));
-                    offset += 4;
+                    quint32 value;
+                    stream >> value;
+                    recordList << QString("%0").arg(value);
                 }
                 break;
             }
         }
-        model->appendRecord(recordList);
+        dbcList << recordList;
         QApplication::postEvent(m_form, new ProgressBar(i, BAR_STEP));
     }
+
+    DBCTableModel* model = new DBCTableModel(dbcList, m_form, this);
+    model->setFieldNames(m_format->GetFieldNames());
 
     QApplication::postEvent(m_form, new SendModel(m_form, model));
 
