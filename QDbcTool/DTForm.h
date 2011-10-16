@@ -107,7 +107,7 @@ public:
     DBCTableModel(QObject *parent = 0, DTObject *dbc = NULL);
     DBCTableModel(DBCList dbcList, QObject *parent = 0, DTObject *dbc = NULL);
 
-    bool removeRow(int row, const QModelIndex& parent = QModelIndex());
+    bool removeRows(int position, int rows, const QModelIndex &index = QModelIndex());
     int rowCount(const QModelIndex &parent) const;
     int columnCount(const QModelIndex &parent) const;
     QVariant data(const QModelIndex &index, int role) const;

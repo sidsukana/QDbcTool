@@ -61,22 +61,30 @@ void DTForm::SlotRemoveRecord()
     DBCSortedModel* smodel = static_cast<DBCSortedModel*>(tableView->model());
     DBCTableModel* model = static_cast<DBCTableModel*>(smodel->sourceModel());
 
-    if (!model)
-        return;
+    QItemSelectionModel *selectionModel = tableView->selectionModel();
+    
+    QModelIndexList indexes = selectionModel->selectedRows();
+    QModelIndex index;
 
-    model->removeRow(tableView->currentIndex().row());
+    foreach (index, indexes)
+    {
+        int row = smodel->mapToSource(index).row();
+        model->removeRows(row, 1, QModelIndex());
+    }
 }
 
-bool DBCTableModel::removeRow(int row, const QModelIndex& parent)
+bool DBCTableModel::removeRows(int position, int rows, const QModelIndex &index)
 {
-    if (m_dbcList.isEmpty())
-        return false;
+    Q_UNUSED(index);
+    beginRemoveRows(QModelIndex(), position, position + rows - 1);
 
-    if (row >= m_dbcList.size() || row < 0)
-        return false;
+    for (int row = 0; row < rows; ++row)
+        m_dbcList.removeAt(position);
 
-    m_dbcList.removeAt(row);
     m_dbc->SetRecordCount(m_dbcList.size());
+
+    endRemoveRows();
+    
     return true;
 }
 
@@ -87,14 +95,11 @@ void DTForm::SlotCustomContextMenu(const QPoint& pos)
 
     QAction* add = new QAction("Add record (not implemented)", this);
 
-    QAction* remove = new QAction("Remove record (not implemented)", this);
+    QAction* remove = new QAction("Remove record", this);
     connect(remove, SIGNAL(triggered()), this, SLOT(SlotRemoveRecord()));
-
-    QAction* ai = new QAction(QString("Row %0, Col %1").arg(index.row()).arg(index.column()), this);
 
     menu->addAction(add);
     menu->addAction(remove);
-    menu->addAction(ai);
     menu->popup(tableView->viewport()->mapToGlobal(pos));
 }
 
@@ -261,6 +266,7 @@ void DTForm::SlotOpenFile()
 
             DBCSortedModel* smodel = static_cast<DBCSortedModel*>(tableView->model());
             DBCTableModel* model = static_cast<DBCTableModel*>(smodel->sourceModel());
+            
             if (model)
                 delete model;
 
