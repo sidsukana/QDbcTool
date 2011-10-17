@@ -73,6 +73,15 @@ void DTForm::SlotRemoveRecord()
     }
 }
 
+bool DBCTableModel::insertRows(int position, int rows, const QModelIndex &index)
+{
+    Q_UNUSED(index);
+    beginInsertRows(QModelIndex(), position, position+rows-1);
+
+    endInsertRows();
+    return true;
+}
+
 bool DBCTableModel::removeRows(int position, int rows, const QModelIndex &index)
 {
     Q_UNUSED(index);
@@ -93,7 +102,8 @@ void DTForm::SlotCustomContextMenu(const QPoint& pos)
     QModelIndex index = tableView->indexAt(pos);
     QMenu* menu = new QMenu(this);
 
-    QAction* add = new QAction("Add record (not implemented)", this);
+    QAction* add = new QAction("Add record", this);
+    connect(add, SIGNAL(triggered()), this, SLOT(SlotAddRecord()));
 
     QAction* remove = new QAction("Remove record", this);
     connect(remove, SIGNAL(triggered()), this, SLOT(SlotRemoveRecord()));
@@ -170,6 +180,37 @@ DTBuild::~DTBuild()
 {
 }
 
+DTRecord::DTRecord(QWidget *parent)
+    : QDialog(parent)
+{
+    setupUi(this);
+    show();
+
+    connect(copyButton, SIGNAL(clicked()), this, SLOT(SlotCopyRecord()));
+}
+
+DTRecord::~DTRecord()
+{
+}
+
+void DTRecord::SlotCopyRecord()
+{
+    RecordTableModel* model = static_cast<RecordTableModel*>(tableView->model());
+
+    DTForm* form = static_cast<DTForm*>(parentWidget());
+
+    DBCSortedModel* smodel = static_cast<DBCSortedModel*>(form->tableView->model());
+    DBCTableModel* dmodel = static_cast<DBCTableModel*>(smodel->sourceModel());
+
+    QStringList valueList = dmodel->getRecord(rowEdit->text().toUInt());
+
+    if (!valueList.isEmpty())
+    {
+        for (quint32 i = 0; i < model->getRowCount(); i++)
+            model->setValue(i, valueList.at(i), tableView->currentIndex());
+    }
+}
+
 AboutForm::AboutForm(QWidget *parent)
     : QDialog(parent)
 {
@@ -238,6 +279,41 @@ void DTForm::SlotWriteDBC()
     else
         statusText->setText("DBC not loaded! Please load DBC file!");
 
+}
+
+void DTForm::SlotAddRecord()
+{
+    DTRecord* record = new DTRecord(this);
+
+    quint32 fieldCount = dbc->GetFieldCount();
+
+    RecordTableModel* model = new RecordTableModel;
+    model->setRowCount(fieldCount);
+
+    for (quint32 i = 0; i < fieldCount; i++)
+    {
+        QPair<QString, QString> p;
+        p.first = format->GetFieldName(i);
+        p.second = "0";
+        model->appendVar(p);
+    }
+
+    record->setModel(model);
+
+    if (record->exec() == QDialog::Accepted)
+    {
+        DBCSortedModel* smodel = static_cast<DBCSortedModel*>(tableView->model());
+        DBCTableModel* dmodel = static_cast<DBCTableModel*>(smodel->sourceModel());
+
+        dbc->SetRecordCount(dbc->GetRecordCount() + 1);
+        dmodel->insertRows(0, 1, QModelIndex());
+
+        QStringList strlist;
+        for (quint32 i = 0; i < fieldCount; i++)
+            strlist << model->getValue(i);
+
+        dmodel->appendRecord(strlist);
+    }
 }
 
 void DTForm::SlotOpenFile()
@@ -428,8 +504,18 @@ QVariant DBCTableModel::headerData(int section, Qt::Orientation orientation, int
 
     if (orientation == Qt::Horizontal)
         return m_fieldNames.at(section);
+    else
+        return section;
 
     return QVariant();
+}
+
+QStringList DBCTableModel::getRecord(quint32 row) const
+{
+    if (row < 0 || row >= m_dbcList.size())
+        return QStringList();
+
+    return m_dbcList.at(row);
 }
 
 Qt::ItemFlags DBCTableModel::flags(const QModelIndex &index) const
@@ -438,4 +524,108 @@ Qt::ItemFlags DBCTableModel::flags(const QModelIndex &index) const
         return Qt::ItemIsEnabled;
 
     return QAbstractTableModel::flags(index) | Qt::ItemIsEditable;
+}
+
+int RecordTableModel::rowCount(const QModelIndex &parent) const
+{
+    Q_UNUSED(parent);
+    return m_rowCount;
+}
+
+int RecordTableModel::columnCount(const QModelIndex &parent) const
+{
+    Q_UNUSED(parent);
+    return 2;
+}
+
+QVariant RecordTableModel::data(const QModelIndex &index, int role) const
+{
+    if (m_recordVars.isEmpty())
+        return QVariant();
+
+    if (!index.isValid())
+        return QVariant();
+
+    if (index.row() >= m_recordVars.size() || index.row() < 0)
+        return QVariant();
+
+    switch (index.column())
+    {
+        case 0:
+        {
+            if (role == Qt::DisplayRole)
+                return m_recordVars.at(index.row()).first;
+            break;
+        }
+        case 1:
+        {
+            if (role == Qt::DisplayRole || role == Qt::EditRole)
+                return m_recordVars.at(index.row()).second;
+            break;
+        }
+    }
+
+    return QVariant();
+}
+
+bool RecordTableModel::setData(const QModelIndex &index, const QVariant &value, int role)
+{
+    if (m_recordVars.isEmpty())
+        return false;
+
+    if (!index.isValid())
+        return false;
+
+    if (index.row() >= m_recordVars.size() || index.row() < 0)
+        return false;
+
+    if (index.column() && role == Qt::EditRole)
+    {
+        QPair<QString, QString> p = m_recordVars.at(index.row());
+        p.second = value.toString();
+        m_recordVars.replace(index.row(), p);
+        emit(dataChanged(index, index));
+
+        return true;
+    }
+
+    return false;
+}
+
+QVariant RecordTableModel::headerData(int section, Qt::Orientation orientation, int role) const
+{
+    if (role != Qt::DisplayRole)
+        return QVariant();
+
+    if (orientation == Qt::Horizontal)
+    {
+        switch (section)
+        {
+            case 0:
+                return QString("Field Name");
+            case 1:
+                return QString("Field Value");
+        }
+    }
+
+    return QVariant();
+}
+
+void RecordTableModel::setValue(quint32 field, QString value, const QModelIndex& index)
+{
+    QPair<QString, QString> p = m_recordVars.at(field);
+    p.second = value;
+    m_recordVars.replace(field, p);
+    emit(dataChanged(index, index));
+}
+
+Qt::ItemFlags RecordTableModel::flags(const QModelIndex &index) const
+{
+    if (!index.isValid())
+        return Qt::ItemIsEnabled;
+
+    if (index.column())
+        return QAbstractTableModel::flags(index) | Qt::ItemIsEditable;
+
+    return QAbstractTableModel::flags(index);
 }

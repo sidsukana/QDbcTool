@@ -51,7 +51,7 @@
          <bool>false</bool>
         </property>
         <attribute name="verticalHeaderVisible">
-         <bool>false</bool>
+         <bool>true</bool>
         </attribute>
         <attribute name="verticalHeaderDefaultSectionSize">
          <number>17</number>
