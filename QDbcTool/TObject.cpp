@@ -27,6 +27,9 @@ void TObject::run()
         case THREAD_WRITE_DBC:
             m_dbc->WriteDBC();
             break;
+        case THREAD_SEARCH:
+            m_dbc->Search();
+            break;
         default:
             break;
     }

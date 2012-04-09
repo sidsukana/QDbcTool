@@ -18,6 +18,15 @@ SendText::~SendText()
 {
 }
 
+SendHiden::SendHiden(quint8 id, quint32 value, bool ok)
+    : QEvent(QEvent::Type(SendHiden::TypeId)), m_ok(ok), m_id(id), m_value(value)
+{
+}
+
+SendHiden::~SendHiden()
+{
+}
+
 ProgressBar::ProgressBar(quint32 value, quint8 id)
     : QEvent(QEvent::Type(ProgressBar::TypeId)), bar_step(value), bar_size(value), op_id(id)
 {

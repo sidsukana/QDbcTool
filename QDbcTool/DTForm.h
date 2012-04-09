@@ -50,6 +50,7 @@ class DTForm : public QMainWindow, public Ui::DTFormUI
         void SlotCustomContextMenu(const QPoint& pos);
         void SlotRemoveRecord();
         void SlotAddRecord();
+        void slotSearch();
 
     private:
         void ApplyFilter();

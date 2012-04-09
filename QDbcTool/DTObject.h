@@ -14,6 +14,19 @@ class DTForm;
 class DBCTableModel;
 class DBCFormat;
 
+
+struct DBC
+{
+    quint32 m_header;
+    quint32 m_recordCount;
+    quint32 m_fieldCount;
+    quint32 m_recordSize;
+    quint32 m_stringSize;
+    QVector<QVector<quint32>> m_dataBlock;
+    char* m_stringBlock;
+};
+
+
 class DTObject
 {
     public:
@@ -23,12 +36,13 @@ class DTObject
 
         void Set(QString dbcName, QString dbcBuild = "Default");
         void Load();
+        void Search();
 
-        void SetRecordCount(quint32 count) { m_recordCount = count; }
-        quint32 GetRecordCount() { return m_recordCount; }
-        quint32 GetFieldCount() { return m_fieldCount; }
-        quint32 GetRecordSize() { return m_recordSize; }
-        quint32 GetStringSize() { return m_stringSize; }
+        void SetRecordCount(quint32 count) { dbc->m_recordCount = count; }
+        quint32 GetRecordCount() { return dbc->m_recordCount; }
+        quint32 GetFieldCount() { return dbc->m_fieldCount; }
+        quint32 GetRecordSize() { return dbc->m_recordSize; }
+        quint32 GetStringSize() { return dbc->m_stringSize; }
         QString GetFileName() { return m_fileName; }
         void SetSaveFileName(QString name) { m_saveFileName = name; }
 
@@ -45,11 +59,7 @@ class DTObject
         bool isEmpty() { return (m_fileName.isEmpty() && m_build.isEmpty()); }
     private:
         DTForm* m_form;
-
-        quint32 m_recordCount;
-        quint32 m_fieldCount;
-        quint32 m_recordSize;
-        quint32 m_stringSize;
+        DBC* dbc;
 
         QString m_fileName;
         QString m_saveFileName;

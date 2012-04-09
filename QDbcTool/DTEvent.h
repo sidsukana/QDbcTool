@@ -54,4 +54,21 @@ class SendText : public QEvent
         quint8 m_id;
 };
 
+class SendHiden : public QEvent
+{
+    public:
+        enum { TypeId = QEvent::User + 4 };
+        SendHiden(quint8 id, quint32 value, bool ok);
+        ~SendHiden();
+
+        bool isOk() { return m_ok; }
+        quint8 GetId() { return m_id; }
+        quint32 GetValue() { return m_value; }
+
+    private:
+        bool m_ok;
+        quint8 m_id;
+        quint32 m_value;
+};
+
 #endif // EVENTMGR_H

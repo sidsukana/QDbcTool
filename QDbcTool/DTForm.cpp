@@ -28,6 +28,7 @@ DTForm::DTForm(QWidget *parent)
 
     dbcInfo = new QLabel(this);
     statusText = new QLabel("Ready!", this);
+    fontComboBox->clear();
 
     mainToolBar->addWidget(progressBar);
     mainToolBar->addSeparator();
@@ -45,15 +46,27 @@ DTForm::DTForm(QWidget *parent)
 
     connect(actionOpen, SIGNAL(triggered()), this, SLOT(SlotOpenFile()));
 
+    QAction* removeRecord = new QAction(this);
+    removeRecord->setShortcut(QKeySequence::Delete);
+    tableView->addAction(removeRecord);
+    connect(removeRecord, SIGNAL(triggered()), this, SLOT(SlotRemoveRecord()));
+
     // Export actions
     connect(actionExport_as_SQL, SIGNAL(triggered()), this, SLOT(SlotExportAsSQL()));
     connect(actionExport_as_CSV, SIGNAL(triggered()), this, SLOT(SlotExportAsCSV()));
 
     connect(actionWrite_DBC, SIGNAL(triggered()), this, SLOT(SlotWriteDBC()));
 
+    connect(lineEdit, SIGNAL(returnPressed()), this, SLOT(slotSearch()));
+
     connect(tableView, SIGNAL(customContextMenuRequested(const QPoint&)), this, SLOT(SlotCustomContextMenu(const QPoint&)));
 
     connect(actionAbout, SIGNAL(triggered()), this, SLOT(SlotAbout()));
+}
+
+void DTForm::slotSearch()
+{
+    dbc->ThreadBegin(THREAD_SEARCH);
 }
 
 void DTForm::SlotRemoveRecord()
@@ -395,7 +408,16 @@ bool DTForm::event(QEvent *ev)
         {
             SendModel* m_ev = (SendModel*)ev;
             proxyModel->setSourceModel(m_ev->GetObject());
+            fontComboBox->clear();
+            fontComboBox->addItems(format->GetFieldNames());
             ApplyFilter();
+            return true;
+        }
+        break;
+        case SendHiden::TypeId:
+        {
+            SendHiden* m_ev = (SendHiden*)ev;
+            tableView->setRowHidden(m_ev->GetValue(), m_ev->isOk());
             return true;
         }
         break;

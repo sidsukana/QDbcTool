@@ -9,11 +9,6 @@
 DTObject::DTObject(DTForm *form, DBCFormat* format)
     : m_form(form), m_format(format)
 {
-    m_recordCount = 0;
-    m_fieldCount = 0;
-    m_recordSize = 0;
-    m_stringSize = 0;
-
     m_fileName = "";
     m_saveFileName = "";
     m_build = "";
@@ -42,6 +37,46 @@ void DTObject::Set(QString dbcName, QString dbcBuild)
     m_saveFileName = "";
 }
 
+void DTObject::Search()
+{
+    ThreadSet(THREAD_SEARCH);
+
+    int index = m_form->fontComboBox->currentIndex();
+    bool isText = false;
+
+    char fieldType = m_format->GetFieldType(index);
+
+    if (fieldType == 's')
+        isText = true;
+
+    QString searchValue = m_form->lineEdit->text();
+
+    DBCSortedModel* smodel = static_cast<DBCSortedModel*>(m_form->tableView->model());
+    DBCTableModel* model = static_cast<DBCTableModel*>(smodel->sourceModel());
+    
+    QApplication::postEvent(m_form, new ProgressBar(dbc->m_recordCount - 1, BAR_SIZE));
+
+    for (quint32 i = 0; i < dbc->m_recordCount; i++)
+    {
+        QStringList record = model->getRecord(i);
+
+        if (searchValue.isEmpty())
+        {
+            QApplication::postEvent(m_form, new SendHiden(0, i, false));
+            continue;
+        }
+
+        if (isText)
+            QApplication::postEvent(m_form, new SendHiden(0, i, !record.at(index).contains(searchValue, Qt::CaseInsensitive)));
+        else
+            QApplication::postEvent(m_form, new SendHiden(0, i, record.at(index) != searchValue));
+
+        QApplication::postEvent(m_form, new ProgressBar(i, BAR_STEP));
+    }
+
+    ThreadUnset(THREAD_SEARCH);
+}
+
 void DTObject::Load()
 {
     ThreadSet(THREAD_OPENFILE);
@@ -58,39 +93,42 @@ void DTObject::Load()
         return;
     }
 
-    QDataStream stream(&m_file);
-    stream.setByteOrder(QDataStream::LittleEndian);
+    dbc = new DBC;
+    dbc->m_header = *reinterpret_cast<quint32*>(m_file.read(4).data());
 
-    quint32 m_header;
-
-    stream >> m_header >> m_recordCount >> m_fieldCount >> m_recordSize >> m_stringSize;
-
-    // String bytes
-    QByteArray stringBytes;
-    stringBytes = m_file.readAll().right(m_stringSize);
-
-    // Reset to begin data block
-    m_file.seek(20);
 
     // Check 'WDBC'
-    if (m_header != 0x43424457)
+    if (dbc->m_header != 0x43424457)
     {
         ThreadUnset(THREAD_OPENFILE);
         return;
     }
 
-    // Load format
-    QFileInfo finfo(m_fileName);
-    if (m_build != "Default")
-        m_format->LoadFormat(finfo.baseName(), m_build);
-    else
-        m_format->LoadFormat(finfo.baseName(), m_fieldCount);
+    dbc->m_recordCount = *reinterpret_cast<quint32*>(m_file.read(4).data());
+    dbc->m_fieldCount = *reinterpret_cast<quint32*>(m_file.read(4).data());
+    dbc->m_recordSize = *reinterpret_cast<quint32*>(m_file.read(4).data());
+    dbc->m_stringSize = *reinterpret_cast<quint32*>(m_file.read(4).data());
 
-    QStringList recordList;
-    QList<QStringList> dbcList;
+    dbc->m_dataBlock.resize(dbc->m_recordCount);
 
-    QList<QByteArray> stringsList = stringBytes.split('\0');
-    QMap<quint32, QString> stringsMap;
+    for (quint32 i = 0; i < dbc->m_recordCount; i++)
+    {
+        dbc->m_dataBlock[i].resize(dbc->m_fieldCount);
+        m_file.read((char*)&dbc->m_dataBlock[i][0], dbc->m_recordSize);
+    }
+
+    QHash<quint32, quint32> hash;
+    quint32 i = 0;
+    for (QVector<QVector<quint32>>::iterator itr = dbc->m_dataBlock.begin(); itr != dbc->m_dataBlock.end(); ++itr)
+    {
+        hash[itr->at(0)] = i;
+        i++;
+    }
+
+    QByteArray strings = m_file.readAll().right(dbc->m_stringSize);
+
+    QList<QByteArray> stringsList = strings.split('\0');
+    QHash<quint32, QString> stringsMap;
     qint32 off = -1;
 
     for (QList<QByteArray>::iterator itr = stringsList.begin(); itr != stringsList.end(); ++itr)
@@ -99,51 +137,31 @@ void DTObject::Load()
         off += (*itr).size() + 1;
     }
 
-    QApplication::postEvent(m_form, new ProgressBar(m_recordCount - 1, BAR_SIZE));
+    // Load format
+    QFileInfo finfo(m_fileName);
+    if (m_build != "Default")
+        m_format->LoadFormat(finfo.baseName(), m_build);
+    else
+        m_format->LoadFormat(finfo.baseName(), dbc->m_fieldCount);
 
-    for (quint32 i = 0; i < m_recordCount; i++)
+    QStringList recordList;
+    QList<QStringList> dbcList;
+
+    QApplication::postEvent(m_form, new ProgressBar(dbc->m_recordCount - 1, BAR_SIZE));
+
+    for (quint32 i = 0; i < dbc->m_recordCount; i++)
     {
         recordList.clear();
-        for (quint32 j = 0; j < m_fieldCount; j++)
+        for (quint32 j = 0; j < dbc->m_fieldCount; j++)
         {
             switch (m_format->GetFieldType(j))
             {
-                case 'u':
-                {
-                    quint32 value;
-                    stream >> value;
-                    recordList << QString("%0").arg(value);
-                }
-                break;
-                case 'i':
-                {
-                    qint32 value;
-                    stream >> value;
-                    recordList << QString("%0").arg(value);
-                }
-                break;
-                case 'f':
-                {
-                    quint32 value;
-                    stream >> value;
-                    float fvalue = (float&)value;
-                    recordList << QString("%0").arg(fvalue);
-                }
-                break;
-                case 's':
-                {
-                    quint32 value;
-                    stream >> value;
-                    recordList << stringsMap[value];
-                }
-                break;
-                default:
-                {
-                    quint32 value;
-                    stream >> value;
-                    recordList << QString("%0").arg(value);
-                }
-                break;
+                case 'u': recordList << QString("%0").arg(dbc->m_dataBlock[i][j]); break;
+                case 'i': recordList << QString("%0").arg((qint32)dbc->m_dataBlock[i][j]); break;
+                case 'f': recordList << QString("%0").arg((float&)dbc->m_dataBlock[i][j]); break;
+                case 's': recordList << stringsMap[dbc->m_dataBlock[i][j]]; break;
+                default:  recordList << QString("%0").arg(dbc->m_dataBlock[i][j]); break;
+                
             }
         }
         dbcList << recordList;
@@ -181,7 +199,7 @@ void DTObject::WriteDBC()
     QDataStream stream(&exportFile);
     stream.setByteOrder(QDataStream::LittleEndian);
 
-    QApplication::postEvent(m_form, new ProgressBar(m_recordCount, BAR_SIZE));
+    QApplication::postEvent(m_form, new ProgressBar(dbc->m_recordCount, BAR_SIZE));
     quint32 step = 0;
 
     QList<QStringList> dbcList = model->getDbcList();
@@ -294,23 +312,23 @@ void DTObject::ExportAsCSV()
 
     QTextStream stream(&exportFile);
 
-    QApplication::postEvent(m_form, new ProgressBar(m_recordCount, BAR_SIZE));
+    QApplication::postEvent(m_form, new ProgressBar(dbc->m_recordCount, BAR_SIZE));
     quint32 step = 0;
 
     QStringList fieldNames = m_format->GetFieldNames();
 
-    for (quint32 f = 0; f < m_fieldCount; f++)
+    for (quint32 f = 0; f < dbc->m_fieldCount; f++)
         stream << fieldNames.at(f) + ";";
 
     stream << "\n";
 
     QList<QStringList> dbcList = model->getDbcList();
 
-    for (quint32 i = 0; i < m_recordCount; i++)
+    for (quint32 i = 0; i < dbc->m_recordCount; i++)
     {
         QStringList dataList = dbcList.at(i);
 
-        for (quint32 j = 0; j < m_fieldCount; j++)
+        for (quint32 j = 0; j < dbc->m_fieldCount; j++)
         {
             switch (m_format->GetFieldType(j))
             {
@@ -357,15 +375,15 @@ void DTObject::ExportAsSQL()
 
     QTextStream stream(&exportFile);
 
-    QApplication::postEvent(m_form, new ProgressBar(m_fieldCount + m_recordCount, BAR_SIZE));
+    QApplication::postEvent(m_form, new ProgressBar(dbc->m_fieldCount + dbc->m_recordCount, BAR_SIZE));
     quint32 step = 0;
 
     QStringList fieldNames = m_format->GetFieldNames();
 
     stream << "CREATE TABLE `" + finfo.baseName() + "_dbc` (\n";
-    for (quint32 i = 0; i < m_fieldCount; i++)
+    for (quint32 i = 0; i < dbc->m_fieldCount; i++)
     {
-        QString endl = i < m_fieldCount-1 ? ",\n" : "\n";
+        QString endl = i < dbc->m_fieldCount-1 ? ",\n" : "\n";
         switch (m_format->GetFieldType(i))
         {
             case 'u':
@@ -388,12 +406,12 @@ void DTObject::ExportAsSQL()
     stream << ") ENGINE = MyISAM DEFAULT CHARSET = utf8 COMMENT = 'Data from " + finfo.fileName() + "';\n\n";
 
     QList<QStringList> dbcList = model->getDbcList();
-    for (quint32 i = 0; i < m_recordCount; i++)
+    for (quint32 i = 0; i < dbc->m_recordCount; i++)
     {
         stream << "INSERT INTO `" + finfo.baseName() + "_dbc` (";
-        for (quint32 f = 0; f < m_fieldCount; f++)
+        for (quint32 f = 0; f < dbc->m_fieldCount; f++)
         {
-            QString endl = f < m_fieldCount-1 ? "`, " : "`) VALUES (";
+            QString endl = f < dbc->m_fieldCount-1 ? "`, " : "`) VALUES (";
             stream << "`" + fieldNames.at(f) + endl;
         }
         QStringList dataList = dbcList.at(i);
@@ -408,9 +426,9 @@ void DTObject::ExportAsSQL()
             }
         }
 
-        for (quint32 j = 0; j < m_fieldCount; j++)
+        for (quint32 j = 0; j < dbc->m_fieldCount; j++)
         {
-            if (j < m_fieldCount-1)
+            if (j < dbc->m_fieldCount-1)
                 stream << "'" + dataList.at(j) + "', ";
             else
                 stream << "'" + dataList.at(j) + "');\n";

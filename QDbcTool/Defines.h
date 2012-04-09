@@ -13,6 +13,7 @@ enum SpellEffectIndex
 enum Threads
 {
     THREAD_OPENFILE,
+    THREAD_SEARCH,
     THREAD_EXPORT_SQL,
     THREAD_EXPORT_CSV,
     THREAD_WRITE_DBC,
