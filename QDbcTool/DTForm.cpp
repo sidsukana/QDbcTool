@@ -193,36 +193,36 @@ DTBuild::~DTBuild()
 {
 }
 
-DTRecord::DTRecord(QWidget *parent)
-    : QDialog(parent)
-{
-    setupUi(this);
-    show();
+//DTRecord::DTRecord(QWidget *parent)
+//    : QDialog(parent)
+//{
+//    setupUi(this);
+//    show();
 
-    connect(copyButton, SIGNAL(clicked()), this, SLOT(SlotCopyRecord()));
-}
+//    connect(copyButton, SIGNAL(clicked()), this, SLOT(SlotCopyRecord()));
+//}
 
-DTRecord::~DTRecord()
-{
-}
+//DTRecord::~DTRecord()
+//{
+//}
 
-void DTRecord::SlotCopyRecord()
-{
-    RecordTableModel* model = static_cast<RecordTableModel*>(tableView->model());
+//void DTRecord::SlotCopyRecord()
+//{
+//    RecordTableModel* model = static_cast<RecordTableModel*>(tableView->model());
 
-    DTForm* form = static_cast<DTForm*>(parentWidget());
+//    DTForm* form = static_cast<DTForm*>(parentWidget());
 
-    DBCSortedModel* smodel = static_cast<DBCSortedModel*>(form->tableView->model());
-    DBCTableModel* dmodel = static_cast<DBCTableModel*>(smodel->sourceModel());
+//    DBCSortedModel* smodel = static_cast<DBCSortedModel*>(form->tableView->model());
+//    DBCTableModel* dmodel = static_cast<DBCTableModel*>(smodel->sourceModel());
 
-    QStringList valueList = dmodel->getRecord(rowEdit->text().toUInt());
+//    QStringList valueList = dmodel->getRecord(rowEdit->text().toUInt());
 
-    if (!valueList.isEmpty())
-    {
-        for (quint32 i = 0; i < model->getRowCount(); i++)
-            model->setValue(i, valueList.at(i), tableView->currentIndex());
-    }
-}
+//    if (!valueList.isEmpty())
+//    {
+//        for (quint32 i = 0; i < model->getRowCount(); i++)
+//            model->setValue(i, valueList.at(i), tableView->currentIndex());
+//    }
+//}
 
 AboutForm::AboutForm(QWidget *parent)
     : QDialog(parent)
@@ -296,37 +296,37 @@ void DTForm::SlotWriteDBC()
 
 void DTForm::SlotAddRecord()
 {
-    DTRecord* record = new DTRecord(this);
+//    DTRecord* record = new DTRecord(this);
 
-    quint32 fieldCount = dbc->GetFieldCount();
+//    quint32 fieldCount = dbc->GetFieldCount();
 
-    RecordTableModel* model = new RecordTableModel;
-    model->setRowCount(fieldCount);
+//    RecordTableModel* model = new RecordTableModel;
+//    model->setRowCount(fieldCount);
 
-    for (quint32 i = 0; i < fieldCount; i++)
-    {
-        QPair<QString, QString> p;
-        p.first = format->GetFieldName(i);
-        p.second = "0";
-        model->appendVar(p);
-    }
+//    for (quint32 i = 0; i < fieldCount; i++)
+//    {
+//        QPair<QString, QString> p;
+//        p.first = format->GetFieldName(i);
+//        p.second = "0";
+//        model->appendVar(p);
+//    }
 
-    record->setModel(model);
+//    record->setModel(model);
 
-    if (record->exec() == QDialog::Accepted)
-    {
-        DBCSortedModel* smodel = static_cast<DBCSortedModel*>(tableView->model());
-        DBCTableModel* dmodel = static_cast<DBCTableModel*>(smodel->sourceModel());
+//    if (record->exec() == QDialog::Accepted)
+//    {
+//        DBCSortedModel* smodel = static_cast<DBCSortedModel*>(tableView->model());
+//        DBCTableModel* dmodel = static_cast<DBCTableModel*>(smodel->sourceModel());
 
-        dbc->SetRecordCount(dbc->GetRecordCount() + 1);
-        dmodel->insertRows(0, 1, QModelIndex());
+//        dbc->SetRecordCount(dbc->GetRecordCount() + 1);
+//        dmodel->insertRows(0, 1, QModelIndex());
 
-        QStringList strlist;
-        for (quint32 i = 0; i < fieldCount; i++)
-            strlist << model->getValue(i);
+//        QStringList strlist;
+//        for (quint32 i = 0; i < fieldCount; i++)
+//            strlist << model->getValue(i);
 
-        dmodel->appendRecord(strlist);
-    }
+//        dmodel->appendRecord(strlist);
+//    }
 }
 
 void DTForm::SlotOpenFile()

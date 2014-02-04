@@ -22,7 +22,7 @@ struct DBC
     quint32 m_fieldCount;
     quint32 m_recordSize;
     quint32 m_stringSize;
-    QVector<QVector<quint32>> m_dataBlock;
+    QVector<QVector<quint32> > m_dataBlock;
     char* m_stringBlock;
 };
 

@@ -119,7 +119,7 @@ void DTObject::Load()
 
     QHash<quint32, quint32> hash;
     quint32 i = 0;
-    for (QVector<QVector<quint32>>::iterator itr = dbc->m_dataBlock.begin(); itr != dbc->m_dataBlock.end(); ++itr)
+    for (QVector<QVector<quint32> >::iterator itr = dbc->m_dataBlock.begin(); itr != dbc->m_dataBlock.end(); ++itr)
     {
         hash[itr->at(0)] = i;
         i++;

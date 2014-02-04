@@ -14,7 +14,7 @@
 //#include <QtCore/QSettings>
 #include "ui_DTForm.h"
 #include "ui_DTBuild.h"
-#include "ui_DTRecord.h"
+//#include "ui_DTRecord.h"
 #include "ui_AboutFormUI.h"
 #include "Defines.h"
 #include "TObject.h"
@@ -90,22 +90,22 @@ private:
     DTForm* m_form;
 };
 
-class DTRecord : public QDialog, public Ui::DTRecordUI
-{
-    Q_OBJECT
+//class DTRecord : public QDialog, public Ui::DTRecordUI
+//{
+//    Q_OBJECT
 
-    public:
-        DTRecord(QWidget *parent = 0);
-        ~DTRecord();
+//    public:
+//        DTRecord(QWidget *parent = 0);
+//        ~DTRecord();
 
-        void setModel(QAbstractTableModel* model) { tableView->setModel(model); }
+//        void setModel(QAbstractTableModel* model) { tableView->setModel(model); }
 
-    public slots:
-        void SlotCopyRecord();
+//    public slots:
+//        void SlotCopyRecord();
 
-    private:
-        Ui::DTRecordUI ui;
-};
+//    private:
+//        Ui::DTRecordUI ui;
+//};
 
 class AboutForm : public QDialog, public Ui::AboutFormUI
 {
@@ -171,7 +171,7 @@ public:
     quint32 getRowCount() const { return m_rowCount; }
 
 private:
-    QList<QPair<QString, QString>> m_recordVars;
+    QList<QPair<QString, QString> > m_recordVars;
     quint32 m_rowCount;
 
 };
