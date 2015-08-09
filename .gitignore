@@ -3,4 +3,4 @@
 .hgignore
 build*
 QDbcTool/QDbcTool.pro.user
-
+.idea
