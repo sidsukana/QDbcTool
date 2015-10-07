@@ -1,16 +1,16 @@
 #ifndef DTFORM_H
 #define DTFORM_H
 
-#include <QtGui/QMainWindow>
-#include <QtGui/QDialog>
-#include <QtGui/QLineEdit>
-#include <QtGui/QStatusBar>
-#include <QtGui/QToolButton>
-#include <QtGui/QProgressBar>
-#include <QtGui/QLabel>
+#include <QtWidgets/QMainWindow>
+#include <QtWidgets/QDialog>
+#include <QtWidgets/QLineEdit>
+#include <QtWidgets/QStatusBar>
+#include <QtWidgets/QToolButton>
+#include <QtWidgets/QProgressBar>
+#include <QtWidgets/QLabel>
 #include <QtCore/QAbstractTableModel>
 #include <QtCore/QSignalMapper>
-#include <QtGui/QSortFilterProxyModel>
+#include <QtCore/QSortFilterProxyModel>
 //#include <QtCore/QSettings>
 #include "ui_DTForm.h"
 #include "ui_DTBuild.h"
@@ -156,7 +156,7 @@ class RecordTableModel : public QAbstractTableModel
     Q_OBJECT
     
 public:
-    RecordTableModel(QObject *parent = 0) {};
+    RecordTableModel(QObject *parent = 0) {}
 
     int rowCount(const QModelIndex &parent) const;
     int columnCount(const QModelIndex &parent) const;

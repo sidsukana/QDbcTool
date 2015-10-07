@@ -1,8 +1,8 @@
 #include "DTForm.h"
 #include <QtCore/QDataStream>
-#include <QtGui/QTableView>
-#include <QtGui/QFileDialog>
-#include <QtGui/QSortFilterProxyModel>
+#include <QtWidgets/QTableView>
+#include <QtWidgets/QFileDialog>
+#include <QtCore/QSortFilterProxyModel>
 #include <QtCore/QAbstractItemModel>
 
 #include "Alphanum.h"

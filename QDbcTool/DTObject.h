@@ -89,7 +89,7 @@ class DBCFormat
         QStringList GetFieldNames();
         QStringList GetFieldTypes();
         bool IsVisible(quint32 field) { return m_dbcFields.at(field).visible; }
-        char GetFieldType(quint32 field) { return m_dbcFields.at(field).type.at(0).toAscii(); }
+        char GetFieldType(quint32 field) { return m_dbcFields.at(field).type.at(0).toLatin1(); }
         QString GetFieldName(quint32 field) { return m_dbcFields.at(field).name; }
         void SetFieldAttribute(quint32 field, QString attr, QString value);
 
