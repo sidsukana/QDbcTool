@@ -330,6 +330,9 @@ void DTObject::ExportAsCSV()
 
         for (quint32 j = 0; j < dbc->m_fieldCount; j++)
         {
+            if (!m_format->IsVisible(j))
+                continue;
+
             switch (m_format->GetFieldType(j))
             {
                 case 'u':
@@ -383,6 +386,9 @@ void DTObject::ExportAsSQL()
     stream << "CREATE TABLE `" + finfo.baseName() + "_dbc` (\n";
     for (quint32 i = 0; i < dbc->m_fieldCount; i++)
     {
+        if (!m_format->IsVisible(i))
+            continue;
+
         QString endl = i < dbc->m_fieldCount-1 ? ",\n" : "\n";
         switch (m_format->GetFieldType(i))
         {
@@ -411,6 +417,9 @@ void DTObject::ExportAsSQL()
         stream << "INSERT INTO `" + finfo.baseName() + "_dbc` (";
         for (quint32 f = 0; f < dbc->m_fieldCount; f++)
         {
+            if (!m_format->IsVisible(f))
+                continue;
+
             QString endl = f < dbc->m_fieldCount-1 ? "`, " : "`) VALUES (";
             stream << "`" + fieldNames.at(f) + endl;
         }
@@ -418,6 +427,9 @@ void DTObject::ExportAsSQL()
 
         for (quint32 d = 0; d < dataList.size(); d++)
         {
+            if (!m_format->IsVisible(d))
+                continue;
+
             if (dataList.at(d).contains("'"))
             {
                 QString data = dataList.at(d);
@@ -428,6 +440,9 @@ void DTObject::ExportAsSQL()
 
         for (quint32 j = 0; j < dbc->m_fieldCount; j++)
         {
+            if (!m_format->IsVisible(j))
+                continue;
+
             if (j < dbc->m_fieldCount-1)
                 stream << "'" + dataList.at(j) + "', ";
             else
