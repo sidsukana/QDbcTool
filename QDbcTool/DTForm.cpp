@@ -128,8 +128,7 @@ void DTForm::SlotCustomContextMenu(const QPoint& pos)
 
 void DTForm::ApplyFilter()
 {
-    for (QList<QAction*>::iterator itr = fieldBox->actions().begin(); itr != fieldBox->actions().end(); ++itr)
-        (*itr)->deleteLater();
+    qDeleteAll(fieldBox->actions());
 
     for (quint32 i = 0; i < dbc->GetFieldCount(); i++)
     {
