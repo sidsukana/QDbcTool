@@ -1,16 +1,12 @@
-#ifndef DTOBJECT_H
-#define DTOBJECT_H
+#pragma once
 
-#include "DTForm.h"
-#include "DTEvent.h"
-#include "TObject.h"
+#include "MainForm.h"
+#include <QDomElement>
+#include <QDomDocument>
+#include <QDomAttr>
+#include <QDomNodeList>
 
-#include <QtXml/QDomElement>
-#include <QtXml/QDomDocument>
-#include <QtXml/QDomAttr>
-#include <QtXml/QDomNodeList>
-
-class DTForm;
+class MainForm;
 class DBCTableModel;
 class DBCFormat;
 
@@ -27,16 +23,17 @@ struct DBC
 };
 
 
-class DTObject
+class DTObject : public QObject
 {
+    Q_OBJECT
     public:
 
-        DTObject(DTForm* form, DBCFormat* format);
+        DTObject(MainForm* form, DBCFormat* format, QObject* parent = nullptr);
         ~DTObject();
 
-        void Set(QString dbcName, QString dbcBuild = "Default");
-        void Load();
-        void Search();
+        void set(QString dbcName, QString dbcBuild = "Default");
+        void load();
+        void search();
 
         void SetRecordCount(quint32 count) { dbc->m_recordCount = count; }
         quint32 GetRecordCount() { return dbc->m_recordCount; }
@@ -46,19 +43,22 @@ class DTObject
         QString GetFileName() { return m_fileName; }
         void SetSaveFileName(QString name) { m_saveFileName = name; }
 
-        void ThreadBegin(quint8 id);
-        void ThreadSet(quint8 id) { ThreadSemaphore[id] = true; }
-        void ThreadUnset(quint8 id) { ThreadSemaphore[id] = false; }
-        bool ThreadExist(quint8 id) { return ThreadSemaphore[id]; }
-
         // Export methods
-        void ExportAsSQL();
-        void ExportAsCSV();
-        void WriteDBC();
+        void exportAsSQL();
+        void exportAsCSV();
+        void writeDBC();
 
         bool isEmpty() { return (m_fileName.isEmpty() && m_build.isEmpty()); }
+
+    signals:
+        void loadingStart(quint32);
+        void loadingStep(quint32);
+        void loadingNote(QString);
+        void loadingDone(QAbstractItemModel*);
+        void searchDone(QList<bool>);
+
     private:
-        DTForm* m_form;
+        MainForm* m_form;
         DBC* dbc;
 
         QString m_fileName;
@@ -66,8 +66,6 @@ class DTObject
         QString m_build;
 
         DBCFormat* m_format;
-
-        bool ThreadSemaphore[MAX_THREAD];
 };
 
 struct DBCField
@@ -103,5 +101,3 @@ class DBCFormat
         QList<DBCField> m_dbcFields;
 
 };
-
-#endif // DTOBJECT_H

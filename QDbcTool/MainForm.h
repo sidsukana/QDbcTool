@@ -1,24 +1,22 @@
-#ifndef DTFORM_H
-#define DTFORM_H
+#pragma once
 
-#include <QtWidgets/QMainWindow>
-#include <QtWidgets/QDialog>
-#include <QtWidgets/QLineEdit>
-#include <QtWidgets/QStatusBar>
-#include <QtWidgets/QToolButton>
-#include <QtWidgets/QProgressBar>
-#include <QtWidgets/QLabel>
-#include <QtCore/QAbstractTableModel>
-#include <QtCore/QSignalMapper>
-#include <QtCore/QSortFilterProxyModel>
-//#include <QtCore/QSettings>
-#include "ui_DTForm.h"
+#include <QMainWindow>
+#include <QDialog>
+#include <QLineEdit>
+#include <QStatusBar>
+#include <QToolButton>
+#include <QProgressBar>
+#include <QLabel>
+#include <QAbstractTableModel>
+#include <QSignalMapper>
+#include <QSortFilterProxyModel>
+#include <QFutureWatcher>
+
+#include "ui_MainForm.h"
 #include "ui_DTBuild.h"
-//#include "ui_DTRecord.h"
-#include "ui_AboutFormUI.h"
+
+#include "ui_AboutForm.h"
 #include "Defines.h"
-#include "TObject.h"
-#include "DTEvent.h"
 #include "DTObject.h"
 
 class TObject;
@@ -28,37 +26,36 @@ class RecordTableModel;
 class DTObject;
 class DBCFormat;
 
-class DTForm : public QMainWindow, public Ui::DTFormUI
+class MainForm : public QMainWindow, public Ui::MainFormUI
 {
     Q_OBJECT
 
     public:
-        DTForm(QWidget *parent = 0);
-        ~DTForm();
-
-        //QSettings* GetConfig() { return config; }
-
-        bool event(QEvent *ev);
+        MainForm(QWidget *parent = 0);
+        ~MainForm();
     
     public slots:
-        void SlotSetVisible(QAction*);
-        void SlotOpenFile();
-        void SlotExportAsSQL();
-        void SlotExportAsCSV();
-        void SlotWriteDBC();
-        void SlotAbout();
-        void SlotCustomContextMenu(const QPoint& pos);
-        void SlotRemoveRecord();
-        void SlotAddRecord();
+        void slotSetVisible(QAction*);
+        void slotOpenFile();
+        void slotExportAsSQL();
+        void slotExportAsCSV();
+        void slotWriteDBC();
+        void slotAbout();
         void slotSearch();
+        void slotFileLoaded(QAbstractItemModel *model);
+        void slotLoadingNote(QString note);
+        void slotLoadingStep(quint32 step);
+        void slotLoadingStart(quint32 size);
+        void slotSearchDone(QList<bool> rowStates);
 
     private:
-        void ApplyFilter();
+        void applyFilter();
 
-        Ui::DTFormUI ui;
+        QFutureWatcher<void> _watcher;
+
+        Ui::MainFormUI ui;
         DTObject* dbc;
         DBCFormat* format;
-        //QSettings* config;
         DBCSortedModel* proxyModel;
 
         QProgressBar* progressBar;
@@ -82,30 +79,13 @@ class DTBuild : public QDialog, public Ui::DTBuildUI
     Q_OBJECT
 
     public:
-        DTBuild(QWidget *parent = 0, DTForm* form = NULL);
+        DTBuild(QWidget *parent = 0, MainForm* form = NULL);
         ~DTBuild();
 
 private:
     Ui::DTBuildUI ui;
-    DTForm* m_form;
+    MainForm* m_form;
 };
-
-//class DTRecord : public QDialog, public Ui::DTRecordUI
-//{
-//    Q_OBJECT
-
-//    public:
-//        DTRecord(QWidget *parent = 0);
-//        ~DTRecord();
-
-//        void setModel(QAbstractTableModel* model) { tableView->setModel(model); }
-
-//    public slots:
-//        void SlotCopyRecord();
-
-//    private:
-//        Ui::DTRecordUI ui;
-//};
 
 class AboutForm : public QDialog, public Ui::AboutFormUI
 {
@@ -175,5 +155,3 @@ private:
     quint32 m_rowCount;
 
 };
-
-#endif // DTFORM_H

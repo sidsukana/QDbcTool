@@ -7,22 +7,20 @@ TEMPLATE = app
 
 
 SOURCES += Main.cpp\
-        DTForm.cpp \
     Alphanum.cpp \
     DTObject.cpp \
-    DTEvent.cpp \
-    TObject.cpp
+    MainForm.cpp
 
-HEADERS  += DTForm.h \
+HEADERS  += \
     Alphanum.h \
     Defines.h \
     DTObject.h \
-    DTEvent.h \
-    TObject.h
+    MainForm.h
 
-FORMS    += DTForm.ui \
+FORMS    += \
     DTBuild.ui \
-    AboutFormUI.ui
+    MainForm.ui \
+    AboutForm.ui
 
 RESOURCES += \
     DbcTool.qrc

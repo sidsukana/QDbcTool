@@ -1,46 +1,32 @@
 #include "DTObject.h"
 #include "Defines.h"
 
-#include <QtCore/QFile>
-#include <QtCore/QFileInfo>
-#include <QtCore/QTime>
-#include <QtCore/QTextStream>
+#include <QFile>
+#include <QFileInfo>
+#include <QTextStream>
+#include <QElapsedTimer>
 
-DTObject::DTObject(DTForm *form, DBCFormat* format)
-    : m_form(form), m_format(format)
+DTObject::DTObject(MainForm *form, DBCFormat* format, QObject* parent)
+    : m_form(form), m_format(format), QObject(parent)
 {
     m_fileName = "";
     m_saveFileName = "";
     m_build = "";
-
-    for (quint8 i = 0; i < MAX_THREAD; i++)
-        ThreadSemaphore[i] = false;
 }
 
 DTObject::~DTObject()
 {
 }
 
-void DTObject::ThreadBegin(quint8 id)
-{
-    if (!ThreadExist(id))
-    {
-        TObject *thread = new TObject(id, this);
-        thread->start();
-    }
-}
-
-void DTObject::Set(QString dbcName, QString dbcBuild)
+void DTObject::set(QString dbcName, QString dbcBuild)
 {
     m_fileName = dbcName;
     m_build = dbcBuild;
     m_saveFileName = "";
 }
 
-void DTObject::Search()
+void DTObject::search()
 {
-    ThreadSet(THREAD_SEARCH);
-
     int index = m_form->fontComboBox->currentIndex();
     bool isText = false;
 
@@ -54,42 +40,40 @@ void DTObject::Search()
     DBCSortedModel* smodel = static_cast<DBCSortedModel*>(m_form->tableView->model());
     DBCTableModel* model = static_cast<DBCTableModel*>(smodel->sourceModel());
     
-    QApplication::postEvent(m_form, new ProgressBar(dbc->m_recordCount - 1, BAR_SIZE));
+    emit loadingStart(dbc->m_recordCount - 1);
 
+    QList<bool> rowStates;
     for (quint32 i = 0; i < dbc->m_recordCount; i++)
     {
         QStringList record = model->getRecord(i);
 
         if (searchValue.isEmpty())
         {
-            QApplication::postEvent(m_form, new SendHiden(0, i, false));
+            rowStates.append(false);
             continue;
         }
 
         if (isText)
-            QApplication::postEvent(m_form, new SendHiden(0, i, !record.at(index).contains(searchValue, Qt::CaseInsensitive)));
+            rowStates.append(!record.at(index).contains(searchValue, Qt::CaseInsensitive));
         else
-            QApplication::postEvent(m_form, new SendHiden(0, i, record.at(index) != searchValue));
+            rowStates.append(record.at(index) != searchValue);
 
-        QApplication::postEvent(m_form, new ProgressBar(i, BAR_STEP));
+        emit loadingStep(i);
     }
 
-    ThreadUnset(THREAD_SEARCH);
+    emit searchDone(rowStates);
 }
 
-void DTObject::Load()
+void DTObject::load()
 {
-    ThreadSet(THREAD_OPENFILE);
-
-    // Timer
-    QTime m_time;
-    m_time.start();
+    QElapsedTimer timer;
+    timer.start();
 
     QFile m_file(m_fileName);
         
     if (!m_file.open(QIODevice::ReadOnly))
     {
-        ThreadUnset(THREAD_OPENFILE);
+        emit loadingNote(QString("Can't open file %0").arg(m_fileName));
         return;
     }
 
@@ -100,7 +84,7 @@ void DTObject::Load()
     // Check 'WDBC'
     if (dbc->m_header != 0x43424457)
     {
-        ThreadUnset(THREAD_OPENFILE);
+        emit loadingNote(QString("Incorrect DBC header!"));
         return;
     }
 
@@ -147,7 +131,9 @@ void DTObject::Load()
     QStringList recordList;
     QList<QStringList> dbcList;
 
-    QApplication::postEvent(m_form, new ProgressBar(dbc->m_recordCount - 1, BAR_SIZE));
+    emit loadingStart(dbc->m_recordCount - 1);
+
+    auto combine = [](quint32 high, quint32 low) { return quint64(quint64(high) << 32) | quint64(low); };
 
     for (quint32 i = 0; i < dbc->m_recordCount; i++)
     {
@@ -160,32 +146,34 @@ void DTObject::Load()
                 case 'i': recordList << QString("%0").arg((qint32)dbc->m_dataBlock[i][j]); break;
                 case 'f': recordList << QString("%0").arg((float&)dbc->m_dataBlock[i][j]); break;
                 case 's': recordList << stringsMap[dbc->m_dataBlock[i][j]]; break;
+                case 'l':
+                {
+                    if (j + 1 < dbc->m_fieldCount)
+                    {
+                        recordList << QString("%0").arg(combine(dbc->m_dataBlock[i][j + 1], dbc->m_dataBlock[i][j]));
+                        break;
+                    }
+                }
+                case '!': recordList << QString(""); break;
                 default:  recordList << QString("%0").arg(dbc->m_dataBlock[i][j]); break;
                 
             }
         }
         dbcList << recordList;
-        QApplication::postEvent(m_form, new ProgressBar(i, BAR_STEP));
+        emit loadingStep(i);
     }
 
     DBCTableModel* model = new DBCTableModel(dbcList, m_form, this);
     model->setFieldNames(m_format->GetFieldNames());
 
-    QApplication::postEvent(m_form, new SendModel(m_form, model));
-
     m_file.close();
 
-    QString stime(QString("Load time (ms): %0").arg(m_time.elapsed()));
-
-    QApplication::postEvent(m_form, new SendText(m_form, 1, stime));
-
-    ThreadUnset(THREAD_OPENFILE);
+    emit loadingNote(QString("Load time (ms): %0").arg(timer.elapsed()));
+    emit loadingDone(model);
 }
 
-void DTObject::WriteDBC()
+void DTObject::writeDBC()
 {
-    ThreadSet(THREAD_WRITE_DBC);
-
     DBCSortedModel* smodel = static_cast<DBCSortedModel*>(m_form->tableView->model());
     DBCTableModel* model = static_cast<DBCTableModel*>(smodel->sourceModel());
     if (!model)
@@ -199,10 +187,11 @@ void DTObject::WriteDBC()
     QDataStream stream(&exportFile);
     stream.setByteOrder(QDataStream::LittleEndian);
 
-    QApplication::postEvent(m_form, new ProgressBar(dbc->m_recordCount, BAR_SIZE));
     quint32 step = 0;
 
     QList<QStringList> dbcList = model->getDbcList();
+
+    emit loadingStart(dbcList.size());
 
     // <String value, Offset value>
     QMap<QString, quint32> stringMap;
@@ -283,7 +272,8 @@ void DTObject::WriteDBC()
         }
 
         step++;
-        QApplication::postEvent(m_form, new ProgressBar(step, BAR_STEP));
+        emit loadingStep(step);
+
     }
 
     for (quint32 i = 0; i < stringBytes.size(); i++)
@@ -291,28 +281,21 @@ void DTObject::WriteDBC()
 
     exportFile.close();
 
-    QApplication::postEvent(m_form, new SendText(m_form, 1, QString("Done!")));
-
-    ThreadUnset(THREAD_WRITE_DBC);
+    emit loadingNote(QString("Done!"));
 }
 
-void DTObject::ExportAsCSV()
+void DTObject::exportAsCSV()
 {
-    ThreadSet(THREAD_EXPORT_CSV);
-
     DBCSortedModel* smodel = static_cast<DBCSortedModel*>(m_form->tableView->model());
     DBCTableModel* model = static_cast<DBCTableModel*>(smodel->sourceModel());
     if (!model)
         return;
-
-    QFileInfo finfo(m_fileName);
 
     QFile exportFile(m_saveFileName);
     exportFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
 
     QTextStream stream(&exportFile);
 
-    QApplication::postEvent(m_form, new ProgressBar(dbc->m_recordCount, BAR_SIZE));
     quint32 step = 0;
 
     QStringList fieldNames = m_format->GetFieldNames();
@@ -323,6 +306,7 @@ void DTObject::ExportAsCSV()
     stream << "\n";
 
     QList<QStringList> dbcList = model->getDbcList();
+    emit loadingStart(dbcList.size());
 
     for (quint32 i = 0; i < dbc->m_recordCount; i++)
     {
@@ -352,20 +336,16 @@ void DTObject::ExportAsCSV()
         stream << "\n";
 
         step++;
-        QApplication::postEvent(m_form, new ProgressBar(step, BAR_STEP));
+        emit loadingStep(step);
     }
 
     exportFile.close();
 
-    QApplication::postEvent(m_form, new SendText(m_form, 1, QString("Done!")));
-
-    ThreadUnset(THREAD_EXPORT_CSV);
+    emit loadingNote(QString("Done!"));
 }
 
-void DTObject::ExportAsSQL()
+void DTObject::exportAsSQL()
 {
-    ThreadSet(THREAD_EXPORT_SQL);
-
     DBCSortedModel* smodel = static_cast<DBCSortedModel*>(m_form->tableView->model());
     DBCTableModel* model = static_cast<DBCTableModel*>(smodel->sourceModel());
     if (!model)
@@ -378,10 +358,17 @@ void DTObject::ExportAsSQL()
 
     QTextStream stream(&exportFile);
 
-    QApplication::postEvent(m_form, new ProgressBar(dbc->m_fieldCount + dbc->m_recordCount, BAR_SIZE));
+    emit loadingStart(dbc->m_fieldCount + dbc->m_recordCount);
     quint32 step = 0;
 
     QStringList fieldNames = m_format->GetFieldNames();
+
+    auto hasNextVisibleField = [this](quint32 pos) {
+      for (quint32 i = pos + 1; i < dbc->m_fieldCount; ++i)
+          if (m_format->IsVisible(i))
+              return true;
+      return false;
+    };
 
     stream << "CREATE TABLE `" + finfo.baseName() + "_dbc` (\n";
     for (quint32 i = 0; i < dbc->m_fieldCount; i++)
@@ -389,11 +376,12 @@ void DTObject::ExportAsSQL()
         if (!m_format->IsVisible(i))
             continue;
 
-        QString endl = i < dbc->m_fieldCount-1 ? ",\n" : "\n";
+        QString endl = hasNextVisibleField(i) ? ",\n" : "\n";
         switch (m_format->GetFieldType(i))
         {
             case 'u':
             case 'i':
+            case 'l':
                 stream << "\t`" + fieldNames.at(i) + "` bigint(20) NOT NULL default '0'" + endl;
                 break;
             case 'f':
@@ -402,12 +390,14 @@ void DTObject::ExportAsSQL()
             case 's':
                 stream << "\t`" + fieldNames.at(i) + "` text NOT NULL" + endl;
                 break;
+            case '!':
+                break;
             default:
                 stream << "\t`" + fieldNames.at(i) + "` bigint(20) NOT NULL default '0'" + endl;
                 break;
         }
         step++;
-        QApplication::postEvent(m_form, new ProgressBar(step, BAR_STEP));
+        emit loadingStep(step);
     }
     stream << ") ENGINE = MyISAM DEFAULT CHARSET = utf8 COMMENT = 'Data from " + finfo.fileName() + "';\n\n";
 
@@ -420,12 +410,12 @@ void DTObject::ExportAsSQL()
             if (!m_format->IsVisible(f))
                 continue;
 
-            QString endl = f < dbc->m_fieldCount-1 ? "`, " : "`) VALUES (";
+            QString endl = hasNextVisibleField(f) ? "`, " : "`) VALUES (";
             stream << "`" + fieldNames.at(f) + endl;
         }
         QStringList dataList = dbcList.at(i);
 
-        for (quint32 d = 0; d < dataList.size(); d++)
+        for (quint32 d = 0; d < dbc->m_fieldCount; d++)
         {
             if (!m_format->IsVisible(d))
                 continue;
@@ -443,20 +433,16 @@ void DTObject::ExportAsSQL()
             if (!m_format->IsVisible(j))
                 continue;
 
-            if (j < dbc->m_fieldCount-1)
-                stream << "'" + dataList.at(j) + "', ";
-            else
-                stream << "'" + dataList.at(j) + "');\n";
+            QString endl = hasNextVisibleField(j) ? "', " : "');\n";
+            stream << "'" + dataList.at(j) + endl;
         }
         step++;
-        QApplication::postEvent(m_form, new ProgressBar(step, BAR_STEP));
+        emit loadingStep(step);
     }
 
     exportFile.close();
 
-    QApplication::postEvent(m_form, new SendText(m_form, 1, QString("Done!")));
-
-    ThreadUnset(THREAD_EXPORT_SQL);
+    emit loadingNote(QString("Done!"));
 }
 
 DBCFormat::DBCFormat(QString xmlFileName)

@@ -1,13 +1,16 @@
-#include "DTForm.h"
-#include <QtCore/QDataStream>
-#include <QtWidgets/QTableView>
-#include <QtWidgets/QFileDialog>
-#include <QtCore/QSortFilterProxyModel>
-#include <QtCore/QAbstractItemModel>
+#include <QtConcurrent/QtConcurrentRun>
+#include <QFuture>
+
+#include "MainForm.h"
+#include <QDataStream>
+#include <QTableView>
+#include <QFileDialog>
+#include <QSortFilterProxyModel>
+#include <QAbstractItemModel>
 
 #include "Alphanum.h"
 
-DTForm::DTForm(QWidget *parent)
+MainForm::MainForm(QWidget *parent)
     : QMainWindow(parent)
 {
     setupUi(this);
@@ -42,48 +45,64 @@ DTForm::DTForm(QWidget *parent)
     proxyModel->setDynamicSortFilter(true);
     tableView->setModel(proxyModel);
 
-    //config = new QSettings("config.ini", QSettings::IniFormat, this);
+    connect(dbc, SIGNAL(loadingStart(quint32)), this, SLOT(slotLoadingStart(quint32)));
+    connect(dbc, SIGNAL(loadingStep(quint32)), this, SLOT(slotLoadingStep(quint32)));
+    connect(dbc, SIGNAL(loadingNote(QString)), this, SLOT(slotLoadingNote(QString)));
+    connect(dbc, SIGNAL(loadingDone(QAbstractItemModel*)), this, SLOT(slotFileLoaded(QAbstractItemModel*)));
+    connect(dbc, SIGNAL(searchDone(QList<bool>)), this, SLOT(slotSearchDone(QList<bool>)));
 
-    connect(actionOpen, SIGNAL(triggered()), this, SLOT(SlotOpenFile()));
-
-    QAction* removeRecord = new QAction(this);
-    removeRecord->setShortcut(QKeySequence::Delete);
-    tableView->addAction(removeRecord);
-    connect(removeRecord, SIGNAL(triggered()), this, SLOT(SlotRemoveRecord()));
+    connect(actionOpen, SIGNAL(triggered()), this, SLOT(slotOpenFile()));
 
     // Export actions
-    connect(actionExport_as_SQL, SIGNAL(triggered()), this, SLOT(SlotExportAsSQL()));
-    connect(actionExport_as_CSV, SIGNAL(triggered()), this, SLOT(SlotExportAsCSV()));
+    connect(actionExport_as_SQL, SIGNAL(triggered()), this, SLOT(slotExportAsSQL()));
+    connect(actionExport_as_CSV, SIGNAL(triggered()), this, SLOT(slotExportAsCSV()));
 
-    connect(actionWrite_DBC, SIGNAL(triggered()), this, SLOT(SlotWriteDBC()));
+    connect(actionWrite_DBC, SIGNAL(triggered()), this, SLOT(slotWriteDBC()));
 
     connect(lineEdit, SIGNAL(returnPressed()), this, SLOT(slotSearch()));
 
     connect(tableView, SIGNAL(customContextMenuRequested(const QPoint&)), this, SLOT(SlotCustomContextMenu(const QPoint&)));
 
-    connect(actionAbout, SIGNAL(triggered()), this, SLOT(SlotAbout()));
+    connect(actionAbout, SIGNAL(triggered()), this, SLOT(slotAbout()));
 }
 
-void DTForm::slotSearch()
+void MainForm::slotSearch()
 {
-    dbc->ThreadBegin(THREAD_SEARCH);
+    if (!_watcher.isRunning())
+        _watcher.setFuture(QtConcurrent::run(dbc, &DTObject::search));
 }
 
-void DTForm::SlotRemoveRecord()
+void MainForm::slotFileLoaded(QAbstractItemModel *model)
 {
-    DBCSortedModel* smodel = static_cast<DBCSortedModel*>(tableView->model());
-    DBCTableModel* model = static_cast<DBCTableModel*>(smodel->sourceModel());
+    proxyModel->setSourceModel(model);
+    fontComboBox->clear();
+    fontComboBox->addItems(format->GetFieldNames());
+    applyFilter();
+}
 
-    QItemSelectionModel *selectionModel = tableView->selectionModel();
-    
-    QModelIndexList indexes = selectionModel->selectedRows();
-    QModelIndex index;
+void MainForm::slotLoadingNote(QString note)
+{
+    statusText->setText(note);
+}
 
-    foreach (index, indexes)
+void MainForm::slotLoadingStep(quint32 step)
+{
+    progressBar->setValue(step);
+}
+
+void MainForm::slotLoadingStart(quint32 size)
+{
+    progressBar->setMaximum(size);
+}
+
+void MainForm::slotSearchDone(QList<bool> rowStates)
+{
+    quint32 i = 0;
+    for (bool state : rowStates)
     {
-        int row = smodel->mapToSource(index).row();
-        model->removeRows(row, 1, QModelIndex());
+        tableView->setRowHidden(i++, state);
     }
+
 }
 
 bool DBCTableModel::insertRows(int position, int rows, const QModelIndex &index)
@@ -110,23 +129,7 @@ bool DBCTableModel::removeRows(int position, int rows, const QModelIndex &index)
     return true;
 }
 
-void DTForm::SlotCustomContextMenu(const QPoint& pos)
-{
-    QModelIndex index = tableView->indexAt(pos);
-    QMenu* menu = new QMenu(this);
-
-    QAction* add = new QAction("Add record", this);
-    connect(add, SIGNAL(triggered()), this, SLOT(SlotAddRecord()));
-
-    QAction* remove = new QAction("Remove record", this);
-    connect(remove, SIGNAL(triggered()), this, SLOT(SlotRemoveRecord()));
-
-    menu->addAction(add);
-    menu->addAction(remove);
-    menu->popup(tableView->viewport()->mapToGlobal(pos));
-}
-
-void DTForm::ApplyFilter()
+void MainForm::applyFilter()
 {
     qDeleteAll(fieldBox->actions());
 
@@ -143,10 +146,10 @@ void DTForm::ApplyFilter()
 
         fieldBox->addAction(action);
     }
-    connect(fieldBox, SIGNAL(triggered(QAction*)), this, SLOT(SlotSetVisible(QAction*)));
+    connect(fieldBox, SIGNAL(triggered(QAction*)), this, SLOT(slotSetVisible(QAction*)));
 }
 
-void DTForm::SlotSetVisible(QAction* action)
+void MainForm::slotSetVisible(QAction* action)
 {
     if (action->isChecked())
     {
@@ -176,12 +179,12 @@ bool DBCSortedModel::lessThan(const QModelIndex &left, const QModelIndex &right)
     return false;
 }
 
-DTForm::~DTForm()
+MainForm::~MainForm()
 {
 }
 
 
-DTBuild::DTBuild(QWidget *parent, DTForm* form)
+DTBuild::DTBuild(QWidget *parent, MainForm* form)
     : QDialog(parent), m_form(form)
 {
     setupUi(this);
@@ -191,37 +194,6 @@ DTBuild::DTBuild(QWidget *parent, DTForm* form)
 DTBuild::~DTBuild()
 {
 }
-
-//DTRecord::DTRecord(QWidget *parent)
-//    : QDialog(parent)
-//{
-//    setupUi(this);
-//    show();
-
-//    connect(copyButton, SIGNAL(clicked()), this, SLOT(SlotCopyRecord()));
-//}
-
-//DTRecord::~DTRecord()
-//{
-//}
-
-//void DTRecord::SlotCopyRecord()
-//{
-//    RecordTableModel* model = static_cast<RecordTableModel*>(tableView->model());
-
-//    DTForm* form = static_cast<DTForm*>(parentWidget());
-
-//    DBCSortedModel* smodel = static_cast<DBCSortedModel*>(form->tableView->model());
-//    DBCTableModel* dmodel = static_cast<DBCTableModel*>(smodel->sourceModel());
-
-//    QStringList valueList = dmodel->getRecord(rowEdit->text().toUInt());
-
-//    if (!valueList.isEmpty())
-//    {
-//        for (quint32 i = 0; i < model->getRowCount(); i++)
-//            model->setValue(i, valueList.at(i), tableView->currentIndex());
-//    }
-//}
 
 AboutForm::AboutForm(QWidget *parent)
     : QDialog(parent)
@@ -234,12 +206,12 @@ AboutForm::~AboutForm()
 {
 }
 
-void DTForm::SlotAbout()
+void MainForm::slotAbout()
 {
     new AboutForm;
 }
 
-void DTForm::SlotExportAsSQL()
+void MainForm::slotExportAsSQL()
 {
     if (!dbc->isEmpty())
     {
@@ -249,7 +221,8 @@ void DTForm::SlotExportAsSQL()
         {
             dbc->SetSaveFileName(fileName);
             statusText->setText("Exporting to SQL file...");
-            dbc->ThreadBegin(THREAD_EXPORT_SQL);
+            if (!_watcher.isRunning())
+                _watcher.setFuture(QtConcurrent::run(dbc, &DTObject::exportAsSQL));
         }
     }
     else
@@ -257,7 +230,7 @@ void DTForm::SlotExportAsSQL()
 
 }
 
-void DTForm::SlotExportAsCSV()
+void MainForm::slotExportAsCSV()
 {
     if (!dbc->isEmpty())
     {
@@ -267,7 +240,8 @@ void DTForm::SlotExportAsCSV()
         {
             dbc->SetSaveFileName(fileName);
             statusText->setText("Exporting to CSV file...");
-            dbc->ThreadBegin(THREAD_EXPORT_CSV);
+            if (!_watcher.isRunning())
+                _watcher.setFuture(QtConcurrent::run(dbc, &DTObject::exportAsCSV));
         }
     }
     else
@@ -275,7 +249,7 @@ void DTForm::SlotExportAsCSV()
 
 }
 
-void DTForm::SlotWriteDBC()
+void MainForm::slotWriteDBC()
 {
     if (!dbc->isEmpty())
     {
@@ -285,7 +259,8 @@ void DTForm::SlotWriteDBC()
         {
             dbc->SetSaveFileName(fileName);
             statusText->setText("Writing DBC file...");
-            dbc->ThreadBegin(THREAD_WRITE_DBC);
+            if (!_watcher.isRunning())
+                _watcher.setFuture(QtConcurrent::run(dbc, &DTObject::writeDBC));
         }
     }
     else
@@ -293,42 +268,7 @@ void DTForm::SlotWriteDBC()
 
 }
 
-void DTForm::SlotAddRecord()
-{
-//    DTRecord* record = new DTRecord(this);
-
-//    quint32 fieldCount = dbc->GetFieldCount();
-
-//    RecordTableModel* model = new RecordTableModel;
-//    model->setRowCount(fieldCount);
-
-//    for (quint32 i = 0; i < fieldCount; i++)
-//    {
-//        QPair<QString, QString> p;
-//        p.first = format->GetFieldName(i);
-//        p.second = "0";
-//        model->appendVar(p);
-//    }
-
-//    record->setModel(model);
-
-//    if (record->exec() == QDialog::Accepted)
-//    {
-//        DBCSortedModel* smodel = static_cast<DBCSortedModel*>(tableView->model());
-//        DBCTableModel* dmodel = static_cast<DBCTableModel*>(smodel->sourceModel());
-
-//        dbc->SetRecordCount(dbc->GetRecordCount() + 1);
-//        dmodel->insertRows(0, 1, QModelIndex());
-
-//        QStringList strlist;
-//        for (quint32 i = 0; i < fieldCount; i++)
-//            strlist << model->getValue(i);
-
-//        dmodel->appendRecord(strlist);
-//    }
-}
-
-void DTForm::SlotOpenFile()
+void MainForm::slotOpenFile()
 {
     QString fileName = QFileDialog::getOpenFileName(this, "Open DBC file", ".", "DBC Files (*.dbc)");
 
@@ -354,12 +294,10 @@ void DTForm::SlotOpenFile()
 
             DBCSortedModel* smodel = static_cast<DBCSortedModel*>(tableView->model());
             DBCTableModel* model = static_cast<DBCTableModel*>(smodel->sourceModel());
-            
             if (model)
                 delete model;
 
-            dbc->Set(fileName, build->comboBox->currentText());
-            dbc->ThreadBegin(THREAD_OPENFILE);
+            dbc->set(fileName, build->comboBox->currentText());
         }
     }
     else
@@ -374,72 +312,11 @@ void DTForm::SlotOpenFile()
         if (model)
             delete model;
 
-        dbc->Set(fileName);
-        dbc->ThreadBegin(THREAD_OPENFILE);
+        dbc->set(fileName);
     }
-}
 
-bool DTForm::event(QEvent *ev)
-{
-    switch (ev->type())
-    {
-        case ProgressBar::TypeId:
-        {
-            ProgressBar* bar = (ProgressBar*)ev;
-            
-            switch (bar->GetId())
-            {
-                case BAR_STEP:
-                {
-                    progressBar->setValue(bar->GetStep());
-                    return true;
-                }
-                case BAR_SIZE:
-                {
-                    progressBar->setMaximum(bar->GetSize());
-                    return true;
-                }
-            }
-
-            break;
-        }
-        case SendModel::TypeId:
-        {
-            SendModel* m_ev = (SendModel*)ev;
-            proxyModel->setSourceModel(m_ev->GetObject());
-            fontComboBox->clear();
-            fontComboBox->addItems(format->GetFieldNames());
-            ApplyFilter();
-            return true;
-        }
-        break;
-        case SendHiden::TypeId:
-        {
-            SendHiden* m_ev = (SendHiden*)ev;
-            tableView->setRowHidden(m_ev->GetValue(), m_ev->isOk());
-            return true;
-        }
-        break;
-        case SendText::TypeId:
-        {
-            SendText* m_ev = (SendText*)ev;
-            switch (m_ev->GetId())
-            {
-                case 1:
-                    statusText->setText(m_ev->GetText());
-                    break;
-                default:
-                    break;
-            }
-            return true;
-        }
-        break;
-        default:
-            break;
-    }
-    
-
-    return QWidget::event(ev);
+    if (!_watcher.isRunning())
+        _watcher.setFuture(QtConcurrent::run(dbc, &DTObject::load));
 }
 
 DBCTableModel::DBCTableModel(QObject *parent, DTObject *dbc)
