@@ -586,11 +586,42 @@ void DBCFormat::LoadFormat(QString name, QString version)
                 for (QJsonValue v : array)
                 {
                     QJsonObject field = v.toObject();
-                    DBCField f;
-                    f.type = field.contains("type") ? field["type"].toString() : "uint";
-                    f.name = field.contains("name") ? field["name"].toString() : QString("Field%0").arg(++j);
-                    f.hiden = field.contains("hiden") ? field["hiden"].toBool() : false;
-                    _fields.append(f);
+                    QString fieldType = field.contains("type") ? field["type"].toString() : "uint";
+                    if (fieldType == "array")
+                    {
+                        QStringList props = field["props"].toString().split("|");
+                        QString type = props.at(0);
+                        quint32 size = props.at(1).toUInt();
+                        quint32 index = props.size() == 3 ? props.at(2).toUInt() : 0;
+                        for (quint32 i = 0; i < size; ++i)
+                        {
+                            DBCField f;
+                            f.type = type;
+                            f.name = field.contains("name") ? field["name"].toString() + QString::number(index++) : QString("Field%0").arg(++j);
+                            f.hiden = field.contains("hiden") ? field["hiden"].toBool() : false;
+                            _fields.append(f);
+                        }
+                    }
+                    else if (fieldType == "long")
+                    {
+                        DBCField f;
+                        f.type = fieldType;
+                        f.name = field.contains("name") ? field["name"].toString() : QString("Field%0").arg(++j);
+                        f.hiden = field.contains("hiden") ? field["hiden"].toBool() : false;
+                        _fields.append(f);
+                        f.type = "!";
+                        f.name = field.contains("name") ? field["name"].toString() + "_hiden" : QString("Field%0_hiden").arg(++j);
+                        f.hiden = true;
+                        _fields.append(f);
+                    }
+                    else
+                    {
+                        DBCField f;
+                        f.type = fieldType;
+                        f.name = field.contains("name") ? field["name"].toString() : QString("Field%0").arg(++j);
+                        f.hiden = field.contains("hiden") ? field["hiden"].toBool() : false;
+                        _fields.append(f);
+                    }
                 }
             }
         }
