@@ -37,6 +37,7 @@ class MainForm : public QMainWindow, public Ui::MainFormUI
     public slots:
         void slotSetVisible(QAction*);
         void slotOpenFile();
+        void slotExportAsJSON();
         void slotExportAsSQL();
         void slotExportAsCSV();
         void slotWriteDBC();

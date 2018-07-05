@@ -1,16 +1,18 @@
-#include "DTObject.h"
-#include "Defines.h"
-
 #include <QFile>
 #include <QFileInfo>
 #include <QTextStream>
 #include <QElapsedTimer>
+#include <QJsonArray>
+#include <QJsonObject>
+
+#include "DTObject.h"
+#include "Defines.h"
 
 DTObject::DTObject(MainForm *form, DBCFormat* format, QObject* parent)
     : m_form(form), m_format(format), QObject(parent)
 {
     m_fileName = "";
-    m_saveFileName = "";
+    _saveFileName = "";
     m_build = "";
 }
 
@@ -22,7 +24,7 @@ void DTObject::set(QString dbcName, QString dbcBuild)
 {
     m_fileName = dbcName;
     m_build = dbcBuild;
-    m_saveFileName = "";
+    _saveFileName = "";
 }
 
 void DTObject::search()
@@ -62,6 +64,71 @@ void DTObject::search()
     }
 
     emit searchDone(rowStates);
+}
+
+void DTObject::exportAsJSON()
+{
+    DBCSortedModel* smodel = static_cast<DBCSortedModel*>(m_form->tableView->model());
+    DBCTableModel* model = static_cast<DBCTableModel*>(smodel->sourceModel());
+    if (!model)
+        return;
+
+    QFile exportFile(_saveFileName);
+    exportFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
+
+    QTextStream stream(&exportFile);
+
+    quint32 step = 0;
+
+    QList<QStringList> dbcList = model->getDbcList();
+    emit loadingStart(dbcList.size());
+
+    QStringList fieldNames = m_format->GetFieldNames();
+
+    auto hasNextVisibleField = [this](quint32 pos) {
+      for (quint32 i = pos + 1; i < dbc->m_fieldCount; ++i)
+          if (!m_format->IsHiden(i))
+              return true;
+      return false;
+    };
+
+    for (quint32 i = 0; i < dbc->m_recordCount; i++)
+    {
+        QStringList dataList = dbcList.at(i);
+
+        stream << "{ ";
+        for (quint32 j = 0; j < dbc->m_fieldCount; j++)
+        {
+            if (m_format->IsHiden(j))
+                continue;
+
+            stream << "\"" << fieldNames.at(j) << "\": ";
+            QString endl = hasNextVisibleField(j) ? ", " : "";
+            switch (m_format->GetFieldType(j))
+            {
+                case 'u':
+                case 'i':
+                case 'f':
+                    stream << dataList.at(j) + endl;
+                    break;
+                case 's':
+                    stream << "\"" + dataList.at(j) + "\"" + endl;
+                    break;
+                default:
+                    stream << dataList.at(j) + endl;
+                    break;
+            }
+        }
+
+        stream << " }\n";
+
+        step++;
+        emit loadingStep(step);
+    }
+
+    exportFile.close();
+
+    emit loadingNote(QString("Done!"));
 }
 
 void DTObject::load()
@@ -181,7 +248,7 @@ void DTObject::writeDBC()
 
     QFileInfo finfo(m_fileName);
 
-    QFile exportFile(m_saveFileName);
+    QFile exportFile(_saveFileName);
     exportFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
 
     QDataStream stream(&exportFile);
@@ -291,7 +358,7 @@ void DTObject::exportAsCSV()
     if (!model)
         return;
 
-    QFile exportFile(m_saveFileName);
+    QFile exportFile(_saveFileName);
     exportFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
 
     QTextStream stream(&exportFile);
@@ -314,7 +381,7 @@ void DTObject::exportAsCSV()
 
         for (quint32 j = 0; j < dbc->m_fieldCount; j++)
         {
-            if (!m_format->IsVisible(j))
+            if (m_format->IsHiden(j))
                 continue;
 
             switch (m_format->GetFieldType(j))
@@ -353,7 +420,7 @@ void DTObject::exportAsSQL()
 
     QFileInfo finfo(m_fileName);
 
-    QFile exportFile(m_saveFileName);
+    QFile exportFile(_saveFileName);
     exportFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
 
     QTextStream stream(&exportFile);
@@ -365,7 +432,7 @@ void DTObject::exportAsSQL()
 
     auto hasNextVisibleField = [this](quint32 pos) {
       for (quint32 i = pos + 1; i < dbc->m_fieldCount; ++i)
-          if (m_format->IsVisible(i))
+          if (!m_format->IsHiden(i))
               return true;
       return false;
     };
@@ -373,7 +440,7 @@ void DTObject::exportAsSQL()
     stream << "CREATE TABLE `" + finfo.baseName() + "_dbc` (\n";
     for (quint32 i = 0; i < dbc->m_fieldCount; i++)
     {
-        if (!m_format->IsVisible(i))
+        if (m_format->IsHiden(i))
             continue;
 
         QString endl = hasNextVisibleField(i) ? ",\n" : "\n";
@@ -407,7 +474,7 @@ void DTObject::exportAsSQL()
         stream << "INSERT INTO `" + finfo.baseName() + "_dbc` (";
         for (quint32 f = 0; f < dbc->m_fieldCount; f++)
         {
-            if (!m_format->IsVisible(f))
+            if (m_format->IsHiden(f))
                 continue;
 
             QString endl = hasNextVisibleField(f) ? "`, " : "`) VALUES (";
@@ -417,7 +484,7 @@ void DTObject::exportAsSQL()
 
         for (quint32 d = 0; d < dbc->m_fieldCount; d++)
         {
-            if (!m_format->IsVisible(d))
+            if (m_format->IsHiden(d))
                 continue;
 
             if (dataList.at(d).contains("'"))
@@ -430,7 +497,7 @@ void DTObject::exportAsSQL()
 
         for (quint32 j = 0; j < dbc->m_fieldCount; j++)
         {
-            if (!m_format->IsVisible(j))
+            if (m_format->IsHiden(j))
                 continue;
 
             QString endl = hasNextVisibleField(j) ? "', " : "');\n";
@@ -445,13 +512,15 @@ void DTObject::exportAsSQL()
     emit loadingNote(QString("Done!"));
 }
 
-DBCFormat::DBCFormat(QString xmlFileName)
+DBCFormat::DBCFormat(QString jsonFileName)
 {
-    QFile xmlFile(xmlFileName);
-    m_fileName = xmlFileName;
-    xmlFile.open(QIODevice::ReadOnly);
-    m_xmlData.setContent(&xmlFile);
-    xmlFile.close();
+    QFile jsonFile(jsonFileName);
+    _fileName = jsonFileName;
+    jsonFile.open(QIODevice::ReadOnly);
+
+    _json = QJsonDocument::fromJson(jsonFile.readAll());
+
+    jsonFile.close();
 }
 
 DBCFormat::~DBCFormat()
@@ -460,59 +529,68 @@ DBCFormat::~DBCFormat()
 
 QStringList DBCFormat::GetBuildList(QString fileName)
 {
-    QDomNodeList dbcNodes = m_xmlData.childNodes();
     QStringList buildList;
 
     buildList.append("Default");
 
-    for (quint32 i = 0; i < dbcNodes.count(); i++)
-        if (!m_xmlData.elementsByTagName(fileName).isEmpty())
-            buildList.append(m_xmlData.elementsByTagName(fileName).item(i).toElement().attribute("build"));
+    if (_json.isArray())
+    {
+        QJsonArray array = _json.array();
+        for (QJsonValue v : array)
+        {
+            QJsonObject format = v.toObject();
+            if (format["name"].toString() == fileName)
+            {
+                buildList.append(format["version"].toString());
+            }
+        }
+    }
 
     return buildList;
 }
 
-void DBCFormat::LoadFormat(QString dbcName, quint32 fieldCount)
+void DBCFormat::LoadFormat(QString name, quint32 fieldCount)
 {
-    m_dbcName = dbcName;
-    m_dbcBuild = "Default";
+    _name = name;
+    _version = "Default";
 
-    m_dbcFields.clear();
+    _fields.clear();
 
     for (quint32 i = 0; i < fieldCount; i++)
     {
         DBCField field;
         field.type = "uint";
         field.name = QString("Field%0").arg(i+1);
-        field.visible = true;
-        m_dbcFields.append(field);
+        field.hiden = false;
+        _fields.append(field);
     }
 }
 
-void DBCFormat::LoadFormat(QString dbcName, QString dbcBuild)
+void DBCFormat::LoadFormat(QString name, QString version)
 {
-    QDomNodeList dbcNodes = m_xmlData.childNodes();
+    _name = name;
+    _version = version;
 
-    m_dbcName = dbcName;
-    m_dbcBuild = dbcBuild;
+    _fields.clear();
 
-    m_dbcFields.clear();
-
-    for (quint32 i = 0; i < dbcNodes.count(); i++)
+    if (_json.isArray())
     {
-        QDomNodeList dbcExisted = m_xmlData.elementsByTagName(dbcName);
-        if (!dbcExisted.isEmpty())
+        QJsonArray array = _json.array();
+        for (QJsonValue v : array)
         {
-            if (dbcExisted.item(i).toElement().attribute("build") == dbcBuild)
+            QJsonObject format = v.toObject();
+            if (format["name"].toString() == name && format["version"].toString() == version)
             {
-                QDomNodeList fieldNodes = m_xmlData.elementsByTagName(dbcName).item(i).childNodes();
-                for (quint32 j = 0; j < fieldNodes.count(); j++)
+                array = format["fields"].toArray();
+                quint32 j = 0;
+                for (QJsonValue v : array)
                 {
-                    DBCField field;
-                    field.type = fieldNodes.item(j).toElement().attribute("type", "uint");
-                    field.name = fieldNodes.item(j).toElement().attribute("name", QString("Field%0").arg(j+1));
-                    field.visible = fieldNodes.item(j).toElement().attribute("visible", "true") == QString("true") ? true : false;
-                    m_dbcFields.append(field);
+                    QJsonObject field = v.toObject();
+                    DBCField f;
+                    f.type = field.contains("type") ? field["type"].toString() : "uint";
+                    f.name = field.contains("name") ? field["name"].toString() : QString("Field%0").arg(++j);
+                    f.hiden = field.contains("hiden") ? field["hiden"].toBool() : false;
+                    _fields.append(f);
                 }
             }
         }
@@ -522,7 +600,7 @@ void DBCFormat::LoadFormat(QString dbcName, QString dbcBuild)
 QStringList DBCFormat::GetFieldNames()
 {
     QStringList fieldNames;
-    for (QList<DBCField>::const_iterator itr = m_dbcFields.begin(); itr != m_dbcFields.end(); ++itr)
+    for (QList<DBCField>::const_iterator itr = _fields.begin(); itr != _fields.end(); ++itr)
         fieldNames.append(itr->name);
 
     return fieldNames;
@@ -531,7 +609,7 @@ QStringList DBCFormat::GetFieldNames()
 QStringList DBCFormat::GetFieldTypes()
 {
     QStringList fieldTypes;
-    for (QList<DBCField>::const_iterator itr = m_dbcFields.begin(); itr != m_dbcFields.end(); ++itr)
+    for (QList<DBCField>::const_iterator itr = _fields.begin(); itr != _fields.end(); ++itr)
         fieldTypes.append(itr->type);
 
     return fieldTypes;
@@ -539,32 +617,32 @@ QStringList DBCFormat::GetFieldTypes()
 
 void DBCFormat::SetFieldAttribute(quint32 field, QString attr, QString value)
 {
-    if (m_dbcBuild == "Default")
+    if (_version == "Default")
         return;
 
     // Set in QDocument
-    QDomNodeList dbcNodes = m_xmlData.childNodes();
+//    QDomNodeList dbcNodes = m_xmlData.childNodes();
 
-    for (quint32 i = 0; i < dbcNodes.count(); i++)
-    {
-        QDomNodeList dbcExisted = m_xmlData.elementsByTagName(m_dbcName);
-        if (!dbcExisted.isEmpty())
-        {
-            if (dbcExisted.item(i).toElement().attribute("build") == m_dbcBuild)
-            {
-                QDomNodeList fieldNodes = m_xmlData.elementsByTagName(m_dbcName).item(i).childNodes();
-                fieldNodes.item(field).toElement().setAttribute(attr, value);
-                break;
-            }
-        }
-    }
+//    for (quint32 i = 0; i < dbcNodes.count(); i++)
+//    {
+//        QDomNodeList dbcExisted = m_xmlData.elementsByTagName(_name);
+//        if (!dbcExisted.isEmpty())
+//        {
+//            if (dbcExisted.item(i).toElement().attribute("build") == _version)
+//            {
+//                QDomNodeList fieldNodes = m_xmlData.elementsByTagName(_name).item(i).childNodes();
+//                fieldNodes.item(field).toElement().setAttribute(attr, value);
+//                break;
+//            }
+//        }
+//    }
 
-    // Save to file
-    QFile xmlFile(m_fileName);
-    if (xmlFile.open(QIODevice::WriteOnly))
-    {
-        QTextStream stream(&xmlFile);
-        m_xmlData.save(stream, 0);
-        xmlFile.close();
-    }
+//    // Save to file
+//    QFile xmlFile(_fileName);
+//    if (xmlFile.open(QIODevice::WriteOnly))
+//    {
+//        QTextStream stream(&xmlFile);
+//        m_xmlData.save(stream, 0);
+//        xmlFile.close();
+//    }
 }

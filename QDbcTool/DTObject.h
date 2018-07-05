@@ -1,10 +1,8 @@
 #pragma once
 
+#include <QJsonDocument>
+
 #include "MainForm.h"
-#include <QDomElement>
-#include <QDomDocument>
-#include <QDomAttr>
-#include <QDomNodeList>
 
 class MainForm;
 class DBCTableModel;
@@ -41,9 +39,10 @@ class DTObject : public QObject
         quint32 GetRecordSize() { return dbc->m_recordSize; }
         quint32 GetStringSize() { return dbc->m_stringSize; }
         QString GetFileName() { return m_fileName; }
-        void SetSaveFileName(QString name) { m_saveFileName = name; }
+        void SetSaveFileName(QString name) { _saveFileName = name; }
 
         // Export methods
+        void exportAsJSON();
         void exportAsSQL();
         void exportAsCSV();
         void writeDBC();
@@ -62,7 +61,7 @@ class DTObject : public QObject
         DBC* dbc;
 
         QString m_fileName;
-        QString m_saveFileName;
+        QString _saveFileName;
         QString m_build;
 
         DBCFormat* m_format;
@@ -72,32 +71,32 @@ struct DBCField
 {
     QString name;
     QString type;
-    bool visible;
+    bool hiden;
 };
 
 class DBCFormat
 {
     public:
-        DBCFormat(QString xmlFileName = QString());
+        DBCFormat(QString jsonFileName = QString());
         ~DBCFormat();
 
-        void LoadFormat(QString dbcName, QString dbcBuild);
-        void LoadFormat(QString dbcName, quint32 fieldCount);
+        void LoadFormat(QString name, QString version);
+        void LoadFormat(QString name, quint32 fieldCount);
         QStringList GetBuildList(QString fileName);
         QStringList GetFieldNames();
         QStringList GetFieldTypes();
-        bool IsVisible(quint32 field) { return m_dbcFields.at(field).visible; }
-        char GetFieldType(quint32 field) { return m_dbcFields.at(field).type.at(0).toLatin1(); }
-        QString GetFieldName(quint32 field) { return m_dbcFields.at(field).name; }
+        bool IsHiden(quint32 field) { return _fields.at(field).hiden; }
+        char GetFieldType(quint32 field) { return _fields.at(field).type.at(0).toLatin1(); }
+        QString GetFieldName(quint32 field) { return _fields.at(field).name; }
         void SetFieldAttribute(quint32 field, QString attr, QString value);
 
     private:
-        QDomDocument m_xmlData;
+        QJsonDocument _json;
 
-        QString m_fileName;
-        QString m_dbcName;
-        QString m_dbcBuild;
+        QString _fileName;
+        QString _name;
+        QString _version;
 
-        QList<DBCField> m_dbcFields;
+        QList<DBCField> _fields;
 
 };

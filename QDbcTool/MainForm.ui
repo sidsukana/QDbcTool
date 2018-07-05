@@ -99,6 +99,7 @@
     </property>
     <addaction name="actionOpen"/>
     <addaction name="separator"/>
+    <addaction name="actionExport_as_JSON"/>
     <addaction name="actionExport_as_SQL"/>
     <addaction name="actionExport_as_CSV"/>
     <addaction name="actionWrite_DBC"/>
@@ -158,6 +159,11 @@
   <action name="actionWrite_DBC">
    <property name="text">
     <string>Write DBC</string>
+   </property>
+  </action>
+  <action name="actionExport_as_JSON">
+   <property name="text">
+    <string>Export as JSON</string>
    </property>
   </action>
  </widget>

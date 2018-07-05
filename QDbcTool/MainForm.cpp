@@ -15,7 +15,7 @@ MainForm::MainForm(QWidget *parent)
 {
     setupUi(this);
 
-    format = new DBCFormat("dbcFormats.xml");
+    format = new DBCFormat("format.json");
     dbc = new DTObject(this, format);
 
     fieldBox = new QToolButton(this);
@@ -54,6 +54,7 @@ MainForm::MainForm(QWidget *parent)
     connect(actionOpen, SIGNAL(triggered()), this, SLOT(slotOpenFile()));
 
     // Export actions
+    connect(actionExport_as_JSON, SIGNAL(triggered()), this, SLOT(slotExportAsJSON()));
     connect(actionExport_as_SQL, SIGNAL(triggered()), this, SLOT(slotExportAsSQL()));
     connect(actionExport_as_CSV, SIGNAL(triggered()), this, SLOT(slotExportAsCSV()));
 
@@ -135,13 +136,13 @@ void MainForm::applyFilter()
 
     for (quint32 i = 0; i < dbc->GetFieldCount(); i++)
     {
-        if (!format->IsVisible(i))
+        if (format->IsHiden(i))
             tableView->hideColumn(i);
 
         QAction* action = new QAction(this);
         action->setText(format->GetFieldName(i));
         action->setCheckable(true);
-        action->setChecked(!format->IsVisible(i));
+        action->setChecked(format->IsHiden(i));
         action->setData(i);
 
         fieldBox->addAction(action);
@@ -209,6 +210,24 @@ AboutForm::~AboutForm()
 void MainForm::slotAbout()
 {
     new AboutForm;
+}
+
+void MainForm::slotExportAsJSON()
+{
+    if (!dbc->isEmpty())
+    {
+        QString fileName = QFileDialog::getSaveFileName(this, "Save as JSON file", ".", "JSON File (*.json)");
+
+        if (!fileName.isEmpty())
+        {
+            dbc->SetSaveFileName(fileName);
+            statusText->setText("Exporting to JSON file...");
+            if (!_watcher.isRunning())
+                _watcher.setFuture(QtConcurrent::run(dbc, &DTObject::exportAsJSON));
+        }
+    }
+    else
+        statusText->setText("DBC not loaded! Please load DBC file!");
 }
 
 void MainForm::slotExportAsSQL()
