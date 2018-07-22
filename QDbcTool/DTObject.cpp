@@ -9,43 +9,53 @@
 #include "Defines.h"
 
 DTObject::DTObject(MainForm *form, DBCFormat* format, QObject* parent)
-    : m_form(form), m_format(format), QObject(parent)
+    : _form(form), _format(format), _model(nullptr), QObject(parent)
 {
-    m_fileName = "";
+    _fileName = "";
     _saveFileName = "";
-    m_build = "";
+    _version = "";
 }
 
 DTObject::~DTObject()
 {
 }
 
-void DTObject::set(QString dbcName, QString dbcBuild)
+QString escapedString(QString str)
 {
-    m_fileName = dbcName;
-    m_build = dbcBuild;
+    str = str.replace("Interface\\Icons\\", "");
+    str = str.replace("\r", "");
+    str = str.replace("\n", "");
+    str = str.replace("\\", "\\\\");
+    str = str.replace("\"", "\\\"");
+    return str;
+}
+
+void DTObject::set(QString fileName, QString version)
+{
+    _fileName = fileName;
+    _version = version;
     _saveFileName = "";
 }
 
 void DTObject::search()
 {
-    int index = m_form->fontComboBox->currentIndex();
+    int index = _form->fontComboBox->currentIndex();
     bool isText = false;
 
-    char fieldType = m_format->GetFieldType(index);
+    char fieldType = _format->getFieldType(index);
 
     if (fieldType == 's')
         isText = true;
 
-    QString searchValue = m_form->lineEdit->text();
+    QString searchValue = _form->lineEdit->text();
 
-    DBCSortedModel* smodel = static_cast<DBCSortedModel*>(m_form->tableView->model());
+    DBCSortedModel* smodel = static_cast<DBCSortedModel*>(_form->tableView->model());
     DBCTableModel* model = static_cast<DBCTableModel*>(smodel->sourceModel());
     
-    emit loadingStart(dbc->m_recordCount - 1);
+    emit loadingStart(_dbc->m_recordCount - 1);
 
     QList<bool> rowStates;
-    for (quint32 i = 0; i < dbc->m_recordCount; i++)
+    for (quint32 i = 0; i < _dbc->m_recordCount; i++)
     {
         QStringList record = model->getRecord(i);
 
@@ -66,117 +76,52 @@ void DTObject::search()
     emit searchDone(rowStates);
 }
 
-void DTObject::exportAsJSON()
-{
-    DBCSortedModel* smodel = static_cast<DBCSortedModel*>(m_form->tableView->model());
-    DBCTableModel* model = static_cast<DBCTableModel*>(smodel->sourceModel());
-    if (!model)
-        return;
-
-    QFile exportFile(_saveFileName);
-    exportFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
-
-    QTextStream stream(&exportFile);
-
-    quint32 step = 0;
-
-    QList<QStringList> dbcList = model->getDbcList();
-    emit loadingStart(dbcList.size());
-
-    QStringList fieldNames = m_format->GetFieldNames();
-
-    auto hasNextVisibleField = [this](quint32 pos) {
-      for (quint32 i = pos + 1; i < dbc->m_fieldCount; ++i)
-          if (!m_format->IsHiden(i))
-              return true;
-      return false;
-    };
-
-    for (quint32 i = 0; i < dbc->m_recordCount; i++)
-    {
-        QStringList dataList = dbcList.at(i);
-
-        stream << "{ ";
-        for (quint32 j = 0; j < dbc->m_fieldCount; j++)
-        {
-            if (m_format->IsHiden(j))
-                continue;
-
-            stream << "\"" << fieldNames.at(j) << "\": ";
-            QString endl = hasNextVisibleField(j) ? ", " : "";
-            switch (m_format->GetFieldType(j))
-            {
-                case 'u':
-                case 'i':
-                case 'f':
-                    stream << dataList.at(j) + endl;
-                    break;
-                case 's':
-                    stream << "\"" + dataList.at(j) + "\"" + endl;
-                    break;
-                default:
-                    stream << dataList.at(j) + endl;
-                    break;
-            }
-        }
-
-        stream << " }\n";
-
-        step++;
-        emit loadingStep(step);
-    }
-
-    exportFile.close();
-
-    emit loadingNote(QString("Done!"));
-}
-
 void DTObject::load()
 {
     QElapsedTimer timer;
     timer.start();
 
-    QFile m_file(m_fileName);
+    QFile m_file(_fileName);
         
     if (!m_file.open(QIODevice::ReadOnly))
     {
-        emit loadingNote(QString("Can't open file %0").arg(m_fileName));
+        emit loadingNote(QString("Can't open file %0").arg(_fileName));
         return;
     }
 
-    dbc = new DBC;
-    dbc->m_header = *reinterpret_cast<quint32*>(m_file.read(4).data());
+    _dbc = new DBC;
+    _dbc->m_header = *reinterpret_cast<quint32*>(m_file.read(4).data());
 
 
     // Check 'WDBC'
-    if (dbc->m_header != 0x43424457)
+    if (_dbc->m_header != 0x43424457)
     {
         emit loadingNote(QString("Incorrect DBC header!"));
         return;
     }
 
-    dbc->m_recordCount = *reinterpret_cast<quint32*>(m_file.read(4).data());
-    dbc->m_fieldCount = *reinterpret_cast<quint32*>(m_file.read(4).data());
-    dbc->m_recordSize = *reinterpret_cast<quint32*>(m_file.read(4).data());
-    dbc->m_stringSize = *reinterpret_cast<quint32*>(m_file.read(4).data());
+    _dbc->m_recordCount = *reinterpret_cast<quint32*>(m_file.read(4).data());
+    _dbc->m_fieldCount = *reinterpret_cast<quint32*>(m_file.read(4).data());
+    _dbc->m_recordSize = *reinterpret_cast<quint32*>(m_file.read(4).data());
+    _dbc->m_stringSize = *reinterpret_cast<quint32*>(m_file.read(4).data());
 
-    dbc->m_dataBlock.resize(dbc->m_recordCount);
+    _dbc->m_dataBlock.resize(_dbc->m_recordCount);
 
-    for (quint32 i = 0; i < dbc->m_recordCount; i++)
+    for (quint32 i = 0; i < _dbc->m_recordCount; i++)
     {
-        dbc->m_dataBlock[i].resize(dbc->m_fieldCount);
-        m_file.read((char*)&dbc->m_dataBlock[i][0], dbc->m_recordSize);
+        _dbc->m_dataBlock[i].resize(_dbc->m_fieldCount);
+        m_file.read((char*)&_dbc->m_dataBlock[i][0], _dbc->m_recordSize);
     }
 
     QHash<quint32, quint32> hash;
     quint32 i = 0;
-    for (QVector<QVector<quint32> >::iterator itr = dbc->m_dataBlock.begin(); itr != dbc->m_dataBlock.end(); ++itr)
+    for (QVector<QVector<quint32> >::iterator itr = _dbc->m_dataBlock.begin(); itr != _dbc->m_dataBlock.end(); ++itr)
     {
         hash[itr->at(0)] = i;
         i++;
     }
 
-    QByteArray strings = m_file.readAll().right(dbc->m_stringSize);
+    QByteArray strings = m_file.readAll().right(_dbc->m_stringSize);
 
     QList<QByteArray> stringsList = strings.split('\0');
     QHash<quint32, QString> stringsMap;
@@ -189,40 +134,40 @@ void DTObject::load()
     }
 
     // Load format
-    QFileInfo finfo(m_fileName);
-    if (m_build != "Default")
-        m_format->LoadFormat(finfo.baseName(), m_build);
+    QFileInfo finfo(_fileName);
+    if (_version != "Default")
+        _format->loadFormat(finfo.baseName(), _version);
     else
-        m_format->LoadFormat(finfo.baseName(), dbc->m_fieldCount);
+        _format->loadFormat(finfo.baseName(), _dbc->m_fieldCount);
 
     QStringList recordList;
     QList<QStringList> dbcList;
 
-    emit loadingStart(dbc->m_recordCount - 1);
+    emit loadingStart(_dbc->m_recordCount - 1);
 
     auto combine = [](quint32 high, quint32 low) { return quint64(quint64(high) << 32) | quint64(low); };
 
-    for (quint32 i = 0; i < dbc->m_recordCount; i++)
+    for (quint32 i = 0; i < _dbc->m_recordCount; i++)
     {
         recordList.clear();
-        for (quint32 j = 0; j < dbc->m_fieldCount; j++)
+        for (quint32 j = 0; j < _dbc->m_fieldCount; j++)
         {
-            switch (m_format->GetFieldType(j))
+            switch (_format->getFieldType(j))
             {
-                case 'u': recordList << QString("%0").arg(dbc->m_dataBlock[i][j]); break;
-                case 'i': recordList << QString("%0").arg((qint32)dbc->m_dataBlock[i][j]); break;
-                case 'f': recordList << QString("%0").arg((float&)dbc->m_dataBlock[i][j]); break;
-                case 's': recordList << stringsMap[dbc->m_dataBlock[i][j]]; break;
+                case 'u': recordList << QString("%0").arg(_dbc->m_dataBlock[i][j]); break;
+                case 'i': recordList << QString("%0").arg((qint32)_dbc->m_dataBlock[i][j]); break;
+                case 'f': recordList << QString("%0").arg((float&)_dbc->m_dataBlock[i][j]); break;
+                case 's': recordList << stringsMap[_dbc->m_dataBlock[i][j]]; break;
                 case 'l':
                 {
-                    if (j + 1 < dbc->m_fieldCount)
+                    if (j + 1 < _dbc->m_fieldCount)
                     {
-                        recordList << QString("%0").arg(combine(dbc->m_dataBlock[i][j + 1], dbc->m_dataBlock[i][j]));
+                        recordList << QString("%0").arg(combine(_dbc->m_dataBlock[i][j + 1], _dbc->m_dataBlock[i][j]));
                         break;
                     }
                 }
                 case '!': recordList << QString(""); break;
-                default:  recordList << QString("%0").arg(dbc->m_dataBlock[i][j]); break;
+                default:  recordList << QString("%0").arg(_dbc->m_dataBlock[i][j]); break;
                 
             }
         }
@@ -230,23 +175,23 @@ void DTObject::load()
         emit loadingStep(i);
     }
 
-    DBCTableModel* model = new DBCTableModel(dbcList, m_form, this);
-    model->setFieldNames(m_format->GetFieldNames());
+    _model = new DBCTableModel(dbcList, _form, this);
+    _model->setFieldNames(_format->getFieldNames());
 
     m_file.close();
 
     emit loadingNote(QString("Load time (ms): %0").arg(timer.elapsed()));
-    emit loadingDone(model);
+    emit loadingDone(_model);
 }
 
 void DTObject::writeDBC()
 {
-    DBCSortedModel* smodel = static_cast<DBCSortedModel*>(m_form->tableView->model());
+    DBCSortedModel* smodel = static_cast<DBCSortedModel*>(_form->tableView->model());
     DBCTableModel* model = static_cast<DBCTableModel*>(smodel->sourceModel());
     if (!model)
         return;
 
-    QFileInfo finfo(m_fileName);
+    QFileInfo finfo(_fileName);
 
     QFile exportFile(_saveFileName);
     exportFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
@@ -281,7 +226,7 @@ void DTObject::writeDBC()
 
         for (quint32 j = 0; j < fieldCount; j++)
         {
-            switch (m_format->GetFieldType(j))
+            switch (_format->getFieldType(j))
             {
                 case 's':
                 {
@@ -312,7 +257,7 @@ void DTObject::writeDBC()
 
         for (quint32 j = 0; j < fieldCount; j++)
         {
-            switch (m_format->GetFieldType(j))
+            switch (_format->getFieldType(j))
             {
                 case 'u':
                     stream << quint32(dataList.at(j).toUInt());
@@ -351,167 +296,6 @@ void DTObject::writeDBC()
     emit loadingNote(QString("Done!"));
 }
 
-void DTObject::exportAsCSV()
-{
-    DBCSortedModel* smodel = static_cast<DBCSortedModel*>(m_form->tableView->model());
-    DBCTableModel* model = static_cast<DBCTableModel*>(smodel->sourceModel());
-    if (!model)
-        return;
-
-    QFile exportFile(_saveFileName);
-    exportFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
-
-    QTextStream stream(&exportFile);
-
-    quint32 step = 0;
-
-    QStringList fieldNames = m_format->GetFieldNames();
-
-    for (quint32 f = 0; f < dbc->m_fieldCount; f++)
-        stream << fieldNames.at(f) + ";";
-
-    stream << "\n";
-
-    QList<QStringList> dbcList = model->getDbcList();
-    emit loadingStart(dbcList.size());
-
-    for (quint32 i = 0; i < dbc->m_recordCount; i++)
-    {
-        QStringList dataList = dbcList.at(i);
-
-        for (quint32 j = 0; j < dbc->m_fieldCount; j++)
-        {
-            if (m_format->IsHiden(j))
-                continue;
-
-            switch (m_format->GetFieldType(j))
-            {
-                case 'u':
-                case 'i':
-                case 'f':
-                    stream << dataList.at(j) + ";";
-                    break;
-                case 's':
-                    stream << "\"" + dataList.at(j) + "\";";
-                    break;
-                default:
-                    stream << dataList.at(j) + ";";
-                    break;
-            }
-        }
-
-        stream << "\n";
-
-        step++;
-        emit loadingStep(step);
-    }
-
-    exportFile.close();
-
-    emit loadingNote(QString("Done!"));
-}
-
-void DTObject::exportAsSQL()
-{
-    DBCSortedModel* smodel = static_cast<DBCSortedModel*>(m_form->tableView->model());
-    DBCTableModel* model = static_cast<DBCTableModel*>(smodel->sourceModel());
-    if (!model)
-        return;
-
-    QFileInfo finfo(m_fileName);
-
-    QFile exportFile(_saveFileName);
-    exportFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
-
-    QTextStream stream(&exportFile);
-
-    emit loadingStart(dbc->m_fieldCount + dbc->m_recordCount);
-    quint32 step = 0;
-
-    QStringList fieldNames = m_format->GetFieldNames();
-
-    auto hasNextVisibleField = [this](quint32 pos) {
-      for (quint32 i = pos + 1; i < dbc->m_fieldCount; ++i)
-          if (!m_format->IsHiden(i))
-              return true;
-      return false;
-    };
-
-    stream << "CREATE TABLE `" + finfo.baseName() + "_dbc` (\n";
-    for (quint32 i = 0; i < dbc->m_fieldCount; i++)
-    {
-        if (m_format->IsHiden(i))
-            continue;
-
-        QString endl = hasNextVisibleField(i) ? ",\n" : "\n";
-        switch (m_format->GetFieldType(i))
-        {
-            case 'u':
-            case 'i':
-            case 'l':
-                stream << "\t`" + fieldNames.at(i) + "` bigint(20) NOT NULL default '0'" + endl;
-                break;
-            case 'f':
-                stream << "\t`" + fieldNames.at(i) + "` float NOT NULL default '0'" + endl;
-                break;
-            case 's':
-                stream << "\t`" + fieldNames.at(i) + "` text NOT NULL" + endl;
-                break;
-            case '!':
-                break;
-            default:
-                stream << "\t`" + fieldNames.at(i) + "` bigint(20) NOT NULL default '0'" + endl;
-                break;
-        }
-        step++;
-        emit loadingStep(step);
-    }
-    stream << ") ENGINE = MyISAM DEFAULT CHARSET = utf8 COMMENT = 'Data from " + finfo.fileName() + "';\n\n";
-
-    QList<QStringList> dbcList = model->getDbcList();
-    for (quint32 i = 0; i < dbc->m_recordCount; i++)
-    {
-        stream << "INSERT INTO `" + finfo.baseName() + "_dbc` (";
-        for (quint32 f = 0; f < dbc->m_fieldCount; f++)
-        {
-            if (m_format->IsHiden(f))
-                continue;
-
-            QString endl = hasNextVisibleField(f) ? "`, " : "`) VALUES (";
-            stream << "`" + fieldNames.at(f) + endl;
-        }
-        QStringList dataList = dbcList.at(i);
-
-        for (quint32 d = 0; d < dbc->m_fieldCount; d++)
-        {
-            if (m_format->IsHiden(d))
-                continue;
-
-            if (dataList.at(d).contains("'"))
-            {
-                QString data = dataList.at(d);
-                data.replace("'", "\\'");
-                dataList.replace(d, data);
-            }
-        }
-
-        for (quint32 j = 0; j < dbc->m_fieldCount; j++)
-        {
-            if (m_format->IsHiden(j))
-                continue;
-
-            QString endl = hasNextVisibleField(j) ? "', " : "');\n";
-            stream << "'" + dataList.at(j) + endl;
-        }
-        step++;
-        emit loadingStep(step);
-    }
-
-    exportFile.close();
-
-    emit loadingNote(QString("Done!"));
-}
-
 DBCFormat::DBCFormat(QString jsonFileName)
 {
     QFile jsonFile(jsonFileName);
@@ -523,11 +307,15 @@ DBCFormat::DBCFormat(QString jsonFileName)
     jsonFile.close();
 }
 
+DBCFormat::DBCFormat(QJsonDocument json) : _json(json)
+{
+}
+
 DBCFormat::~DBCFormat()
 {
 }
 
-QStringList DBCFormat::GetBuildList(QString fileName)
+QStringList DBCFormat::getVersionList(QString fileName)
 {
     QStringList buildList;
 
@@ -549,7 +337,7 @@ QStringList DBCFormat::GetBuildList(QString fileName)
     return buildList;
 }
 
-void DBCFormat::LoadFormat(QString name, quint32 fieldCount)
+void DBCFormat::loadFormat(QString name, quint32 fieldCount)
 {
     _name = name;
     _version = "Default";
@@ -562,11 +350,12 @@ void DBCFormat::LoadFormat(QString name, quint32 fieldCount)
         field.type = "uint";
         field.name = QString("Field%0").arg(i+1);
         field.hiden = false;
+        field.custom = false;
         _fields.append(field);
     }
 }
 
-void DBCFormat::LoadFormat(QString name, QString version)
+void DBCFormat::loadFormat(QString name, QString version)
 {
     _name = name;
     _version = version;
@@ -599,6 +388,9 @@ void DBCFormat::LoadFormat(QString name, QString version)
                             f.type = type;
                             f.name = field.contains("name") ? field["name"].toString() + QString::number(index++) : QString("Field%0").arg(++j);
                             f.hiden = field.contains("hiden") ? field["hiden"].toBool() : false;
+                            f.ref = field.contains("ref") ? field["ref"].toString() : "";
+                            f.custom = field.contains("custom") ? field["custom"].toBool() : false;
+                            f.value = field.contains("value") ? field["value"].toString() : "";
                             _fields.append(f);
                         }
                     }
@@ -608,10 +400,15 @@ void DBCFormat::LoadFormat(QString name, QString version)
                         f.type = fieldType;
                         f.name = field.contains("name") ? field["name"].toString() : QString("Field%0").arg(++j);
                         f.hiden = field.contains("hiden") ? field["hiden"].toBool() : false;
+                        f.ref = field.contains("ref") ? field["ref"].toString() : "";
+                        f.custom = field.contains("custom") ? field["custom"].toBool() : false;
+                        f.value = QString::number(field.contains("value") ? field["value"].toInt() : 0);
                         _fields.append(f);
                         f.type = "!";
                         f.name = field.contains("name") ? field["name"].toString() + "_hiden" : QString("Field%0_hiden").arg(++j);
                         f.hiden = true;
+                        f.ref = field.contains("ref") ? field["ref"].toString() : "";
+                        f.custom = field.contains("custom") ? field["custom"].toBool() : false;
                         _fields.append(f);
                     }
                     else
@@ -620,6 +417,9 @@ void DBCFormat::LoadFormat(QString name, QString version)
                         f.type = fieldType;
                         f.name = field.contains("name") ? field["name"].toString() : QString("Field%0").arg(++j);
                         f.hiden = field.contains("hiden") ? field["hiden"].toBool() : false;
+                        f.ref = field.contains("ref") ? field["ref"].toString() : "";
+                        f.custom = field.contains("custom") ? field["custom"].toBool() : false;
+                        f.value = QString::number(field.contains("value") ? field["value"].toInt() : 0);
                         _fields.append(f);
                     }
                 }
@@ -628,25 +428,27 @@ void DBCFormat::LoadFormat(QString name, QString version)
     }
 }
 
-QStringList DBCFormat::GetFieldNames()
+QStringList DBCFormat::getFieldNames()
 {
     QStringList fieldNames;
-    for (QList<DBCField>::const_iterator itr = _fields.begin(); itr != _fields.end(); ++itr)
-        fieldNames.append(itr->name);
+    for (DBCField& field : _fields)
+        if (!field.custom)
+            fieldNames.append(field.name);
 
     return fieldNames;
 }
 
-QStringList DBCFormat::GetFieldTypes()
+QStringList DBCFormat::getFieldTypes()
 {
     QStringList fieldTypes;
-    for (QList<DBCField>::const_iterator itr = _fields.begin(); itr != _fields.end(); ++itr)
-        fieldTypes.append(itr->type);
+    for (DBCField& field : _fields)
+        if (!field.custom)
+            fieldTypes.append(field.type);
 
     return fieldTypes;
 }
 
-void DBCFormat::SetFieldAttribute(quint32 field, QString attr, QString value)
+void DBCFormat::setFieldAttribute(quint32 field, QString attr, QString value)
 {
     if (_version == "Default")
         return;

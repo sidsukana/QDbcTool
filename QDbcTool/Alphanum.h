@@ -1,3 +1,3 @@
 #include <QtCore/QString>
 
-int compare(QString l, QString r);
+qint64 compare(QString l, QString r);

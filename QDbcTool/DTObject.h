@@ -20,6 +20,7 @@ struct DBC
     char* m_stringBlock;
 };
 
+QString escapedString(QString str);
 
 class DTObject : public QObject
 {
@@ -29,17 +30,19 @@ class DTObject : public QObject
         DTObject(MainForm* form, DBCFormat* format, QObject* parent = nullptr);
         ~DTObject();
 
-        void set(QString dbcName, QString dbcBuild = "Default");
+        void set(QString fileName, QString version = "Default");
         void load();
         void search();
 
-        void SetRecordCount(quint32 count) { dbc->m_recordCount = count; }
-        quint32 GetRecordCount() { return dbc->m_recordCount; }
-        quint32 GetFieldCount() { return dbc->m_fieldCount; }
-        quint32 GetRecordSize() { return dbc->m_recordSize; }
-        quint32 GetStringSize() { return dbc->m_stringSize; }
-        QString GetFileName() { return m_fileName; }
-        void SetSaveFileName(QString name) { _saveFileName = name; }
+        void setRecordCount(quint32 count) { _dbc->m_recordCount = count; }
+        quint32 getRecordCount() { return _dbc->m_recordCount; }
+        quint32 getFieldCount() { return _dbc->m_fieldCount; }
+        quint32 getRecordSize() { return _dbc->m_recordSize; }
+        quint32 getStringSize() { return _dbc->m_stringSize; }
+        QString getFileName() { return _fileName; }
+        void setSaveFileName(QString name) { _saveFileName = name; }
+
+        DBCTableModel* getModel() const { return _model; }
 
         // Export methods
         void exportAsJSON();
@@ -47,7 +50,7 @@ class DTObject : public QObject
         void exportAsCSV();
         void writeDBC();
 
-        bool isEmpty() { return (m_fileName.isEmpty() && m_build.isEmpty()); }
+        bool isEmpty() { return (_fileName.isEmpty() && _version.isEmpty()); }
 
     signals:
         void loadingStart(quint32);
@@ -57,14 +60,15 @@ class DTObject : public QObject
         void searchDone(QList<bool>);
 
     private:
-        MainForm* m_form;
-        DBC* dbc;
+        DBCTableModel* _model;
+        MainForm* _form;
+        DBC* _dbc;
 
-        QString m_fileName;
+        QString _fileName;
         QString _saveFileName;
-        QString m_build;
+        QString _version;
 
-        DBCFormat* m_format;
+        DBCFormat* _format;
 };
 
 struct DBCField
@@ -72,23 +76,33 @@ struct DBCField
     QString name;
     QString type;
     bool hiden;
+    QString ref;
+    bool custom;
+    QString value;
 };
 
 class DBCFormat
 {
     public:
         DBCFormat(QString jsonFileName = QString());
+        DBCFormat(QJsonDocument json);
         ~DBCFormat();
 
-        void LoadFormat(QString name, QString version);
-        void LoadFormat(QString name, quint32 fieldCount);
-        QStringList GetBuildList(QString fileName);
-        QStringList GetFieldNames();
-        QStringList GetFieldTypes();
-        bool IsHiden(quint32 field) { return _fields.at(field).hiden; }
-        char GetFieldType(quint32 field) { return _fields.at(field).type.at(0).toLatin1(); }
-        QString GetFieldName(quint32 field) { return _fields.at(field).name; }
-        void SetFieldAttribute(quint32 field, QString attr, QString value);
+        void loadFormat(QString name, QString version);
+        void loadFormat(QString name, quint32 fieldCount);
+        QStringList getVersionList(QString fileName);
+        QStringList getFieldNames();
+        QStringList getFieldTypes();
+        quint32 getFieldCount() const { return quint32(_fields.size()); }
+        bool isHiden(quint32 field) const { return _fields.at(field).hiden; }
+        bool isCustom(quint32 field) const { return _fields.at(field).custom; }
+        QString getValue(quint32 field) const { return _fields.at(field).value; }
+        char getFieldType(quint32 field) const { return _fields.at(field).type.at(0).toLatin1(); }
+        QString getFieldName(quint32 field) const { return _fields.at(field).name; }
+        QString getFieldRef(quint32 field) const { return _fields.at(field).ref; }
+        void setFieldAttribute(quint32 field, QString attr, QString value);
+
+        QJsonDocument getJson() const { return _json; }
 
     private:
         QJsonDocument _json;

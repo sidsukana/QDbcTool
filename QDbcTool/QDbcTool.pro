@@ -9,7 +9,10 @@ TEMPLATE = app
 SOURCES += Main.cpp\
     Alphanum.cpp \
     DTObject.cpp \
-    MainForm.cpp
+    MainForm.cpp \
+    export_sql.cpp \
+    export_csv.cpp \
+    export_json.cpp
 
 HEADERS  += \
     Alphanum.h \

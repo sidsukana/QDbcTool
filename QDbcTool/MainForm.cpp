@@ -77,7 +77,7 @@ void MainForm::slotFileLoaded(QAbstractItemModel *model)
 {
     proxyModel->setSourceModel(model);
     fontComboBox->clear();
-    fontComboBox->addItems(format->GetFieldNames());
+    fontComboBox->addItems(format->getFieldNames());
     applyFilter();
 }
 
@@ -123,7 +123,7 @@ bool DBCTableModel::removeRows(int position, int rows, const QModelIndex &index)
     for (int row = 0; row < rows; ++row)
         m_dbcList.removeAt(position);
 
-    m_dbc->SetRecordCount(m_dbcList.size());
+    m_dbc->setRecordCount(m_dbcList.size());
 
     endRemoveRows();
     
@@ -134,15 +134,15 @@ void MainForm::applyFilter()
 {
     qDeleteAll(fieldBox->actions());
 
-    for (quint32 i = 0; i < dbc->GetFieldCount(); i++)
+    for (quint32 i = 0; i < dbc->getFieldCount(); i++)
     {
-        if (format->IsHiden(i))
+        if (format->isHiden(i))
             tableView->hideColumn(i);
 
         QAction* action = new QAction(this);
-        action->setText(format->GetFieldName(i));
+        action->setText(format->getFieldName(i));
         action->setCheckable(true);
-        action->setChecked(format->IsHiden(i));
+        action->setChecked(format->isHiden(i));
         action->setData(i);
 
         fieldBox->addAction(action);
@@ -154,12 +154,12 @@ void MainForm::slotSetVisible(QAction* action)
 {
     if (action->isChecked())
     {
-        format->SetFieldAttribute(action->data().toUInt(), "visible", "false");
+        format->setFieldAttribute(action->data().toUInt(), "visible", "false");
         tableView->hideColumn(action->data().toUInt());
     }
     else
     {
-        format->SetFieldAttribute(action->data().toUInt(), "visible", "true");
+        format->setFieldAttribute(action->data().toUInt(), "visible", "true");
         tableView->showColumn(action->data().toUInt());
     }
 }
@@ -220,7 +220,7 @@ void MainForm::slotExportAsJSON()
 
         if (!fileName.isEmpty())
         {
-            dbc->SetSaveFileName(fileName);
+            dbc->setSaveFileName(fileName);
             statusText->setText("Exporting to JSON file...");
             if (!_watcher.isRunning())
                 _watcher.setFuture(QtConcurrent::run(dbc, &DTObject::exportAsJSON));
@@ -238,7 +238,7 @@ void MainForm::slotExportAsSQL()
 
         if (!fileName.isEmpty())
         {
-            dbc->SetSaveFileName(fileName);
+            dbc->setSaveFileName(fileName);
             statusText->setText("Exporting to SQL file...");
             if (!_watcher.isRunning())
                 _watcher.setFuture(QtConcurrent::run(dbc, &DTObject::exportAsSQL));
@@ -257,7 +257,7 @@ void MainForm::slotExportAsCSV()
 
         if (!fileName.isEmpty())
         {
-            dbc->SetSaveFileName(fileName);
+            dbc->setSaveFileName(fileName);
             statusText->setText("Exporting to CSV file...");
             if (!_watcher.isRunning())
                 _watcher.setFuture(QtConcurrent::run(dbc, &DTObject::exportAsCSV));
@@ -276,7 +276,7 @@ void MainForm::slotWriteDBC()
 
         if (!fileName.isEmpty())
         {
-            dbc->SetSaveFileName(fileName);
+            dbc->setSaveFileName(fileName);
             statusText->setText("Writing DBC file...");
             if (!_watcher.isRunning())
                 _watcher.setFuture(QtConcurrent::run(dbc, &DTObject::writeDBC));
@@ -296,7 +296,7 @@ void MainForm::slotOpenFile()
 
     QFileInfo finfo(fileName);
 
-    QStringList buildList = format->GetBuildList(finfo.baseName());
+    QStringList buildList = format->getVersionList(finfo.baseName());
     if (!buildList.isEmpty())
     {
         DTBuild* build = new DTBuild;
@@ -361,13 +361,13 @@ void DBCTableModel::clear()
 int DBCTableModel::rowCount(const QModelIndex &parent) const
 {
     Q_UNUSED(parent);
-    return m_dbc->GetRecordCount();
+    return m_dbc->getRecordCount();
 }
 
 int DBCTableModel::columnCount(const QModelIndex &parent) const
 {
     Q_UNUSED(parent);
-    return m_dbc->GetFieldCount();
+    return m_dbc->getFieldCount();
 }
 
 QVariant DBCTableModel::data(const QModelIndex &index, int role) const
