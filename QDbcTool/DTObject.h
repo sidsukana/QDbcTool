@@ -79,6 +79,7 @@ struct DBCField
     QString ref;
     bool custom;
     QString value;
+    bool arrayExport;
 };
 
 class DBCFormat
@@ -96,6 +97,7 @@ class DBCFormat
         quint32 getFieldCount() const { return quint32(_fields.size()); }
         bool isHiden(quint32 field) const { return _fields.at(field).hiden; }
         bool isCustom(quint32 field) const { return _fields.at(field).custom; }
+        bool isArrayExport(quint32 field) const { return _fields.at(field).arrayExport; }
         QString getValue(quint32 field) const { return _fields.at(field).value; }
         char getFieldType(quint32 field) const { return _fields.at(field).type.at(0).toLatin1(); }
         QString getFieldName(quint32 field) const { return _fields.at(field).name; }

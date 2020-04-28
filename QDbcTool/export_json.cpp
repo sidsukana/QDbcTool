@@ -20,6 +20,13 @@ void DTObject::exportAsJSON()
     QList<QStringList> dbcList = _model->getDbcList();
     emit loadingStart(dbcList.size());
 
+    auto hasNextArrayField = [&](QString& arrayField, quint32 pos) {
+      for (quint32 i = pos + 1; i < _format->getFieldCount(); ++i)
+          if (_format->isArrayExport(i) && _format->getFieldName(i).chopped(1) == arrayField)
+              return true;
+      return false;
+    };
+
     auto hasNextVisibleField = [&](quint32 pos) {
       for (quint32 i = pos + 1; i < _format->getFieldCount(); ++i)
           if (!_format->isHiden(i))
@@ -34,8 +41,9 @@ void DTObject::exportAsJSON()
       return false;
     };
 
-    auto writeToStream = [&](quint32 pos, QStringList dataList) {
-        QString endl = hasNextVisibleField(pos) ? ", " : "";
+    auto writeToStream = [&](quint32 pos, QStringList dataList, bool arrayExport = false) {
+        QString endl = hasNextVisibleField(pos) && !arrayExport ? ", " : "";
+
         switch (_format->getFieldType(pos))
         {
             case 's':
@@ -64,13 +72,47 @@ void DTObject::exportAsJSON()
     {
         QStringList dataList = dbcList.at(i);
 
+        bool arrayExport = false;
+        QString arrayField = "";
         stream << "{ ";
         for (quint32 j = 0; j < _format->getFieldCount(); j++)
         {
             if (_format->isHiden(j))
                 continue;
 
-            stream << "\"" << _format->getFieldName(j) << "\": ";
+            if (!arrayExport)
+            {
+                if (_format->isArrayExport(j))
+                {
+                    arrayExport = true;
+                    arrayField = _format->getFieldName(j).chopped(1);
+                    stream << "\"" << arrayField << "\": [ ";
+                }
+                else
+                {
+                    stream << "\"" << _format->getFieldName(j) << "\": ";
+                }
+            }
+            else
+            {
+                if (_format->isArrayExport(j))
+                {
+                    if (_format->getFieldName(j).chopped(1) != arrayField)
+                    {
+                        arrayField = _format->getFieldName(j).chopped(1);
+                        stream << " ], \"" << arrayField << "\": [ ";
+                    }
+                    else
+                    {
+                        stream << ", ";
+                    }
+                }
+                else
+                {
+                    arrayExport = false;
+                    stream << " ], \"" << _format->getFieldName(j) << "\": ";
+                }
+            }
 
             QString ref = _format->getFieldRef(j);
             if (!ref.isEmpty())
@@ -151,7 +193,7 @@ void DTObject::exportAsJSON()
             }
             else
             {
-                writeToStream(j, dataList);
+                writeToStream(j, dataList, arrayExport);
             }
         }
 

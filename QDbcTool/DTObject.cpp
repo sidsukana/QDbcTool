@@ -351,6 +351,7 @@ void DBCFormat::loadFormat(QString name, quint32 fieldCount)
         field.name = QString("Field%0").arg(i+1);
         field.hiden = false;
         field.custom = false;
+        field.arrayExport = false;
         _fields.append(field);
     }
 }
@@ -391,6 +392,7 @@ void DBCFormat::loadFormat(QString name, QString version)
                             f.ref = field.contains("ref") ? field["ref"].toString() : "";
                             f.custom = field.contains("custom") ? field["custom"].toBool() : false;
                             f.value = field.contains("value") ? field["value"].toString() : "";
+                            f.arrayExport = field.contains("arrayExport") ? field["arrayExport"].toBool() : false;
                             _fields.append(f);
                         }
                     }
