@@ -38,6 +38,7 @@ class MainForm : public QMainWindow, public Ui::MainFormUI
         void slotSetVisible(QAction*);
         void slotOpenFile();
         void slotExportAsJSON();
+        void slotExportAsJSONwithHiddens();
         void slotExportAsSQL();
         void slotExportAsCSV();
         void slotWriteDBC();
@@ -121,7 +122,7 @@ public:
     Qt::ItemFlags flags(const QModelIndex &index) const;
     void appendRecord(QStringList strl) { m_dbcList << strl; }
     DBCList getDbcList() { return m_dbcList; }
-    QStringList getRecord(quint32 row) const;
+    QStringList getRecord(qint32 row) const;
     void clear();
 
 private:
@@ -137,7 +138,9 @@ class RecordTableModel : public QAbstractTableModel
     Q_OBJECT
     
 public:
-    RecordTableModel(QObject *parent = 0) {}
+    RecordTableModel(QObject *parent = nullptr) {
+        Q_UNUSED(parent)
+    }
 
     int rowCount(const QModelIndex &parent) const;
     int columnCount(const QModelIndex &parent) const;

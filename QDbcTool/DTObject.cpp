@@ -9,7 +9,7 @@
 #include "Defines.h"
 
 DTObject::DTObject(MainForm *form, DBCFormat* format, QObject* parent)
-    : _form(form), _format(format), _model(nullptr), QObject(parent)
+    : QObject(parent), _model(nullptr), _form(form), _format(format)
 {
     _fileName = "";
     _saveFileName = "";
@@ -288,7 +288,7 @@ void DTObject::writeDBC()
 
     }
 
-    for (quint32 i = 0; i < stringBytes.size(); i++)
+    for (qint32 i = 0; i < stringBytes.size(); i++)
         stream << quint8(stringBytes.at(i));
 
     exportFile.close();
@@ -448,36 +448,4 @@ QStringList DBCFormat::getFieldTypes()
             fieldTypes.append(field.type);
 
     return fieldTypes;
-}
-
-void DBCFormat::setFieldAttribute(quint32 field, QString attr, QString value)
-{
-    if (_version == "Default")
-        return;
-
-    // Set in QDocument
-//    QDomNodeList dbcNodes = m_xmlData.childNodes();
-
-//    for (quint32 i = 0; i < dbcNodes.count(); i++)
-//    {
-//        QDomNodeList dbcExisted = m_xmlData.elementsByTagName(_name);
-//        if (!dbcExisted.isEmpty())
-//        {
-//            if (dbcExisted.item(i).toElement().attribute("build") == _version)
-//            {
-//                QDomNodeList fieldNodes = m_xmlData.elementsByTagName(_name).item(i).childNodes();
-//                fieldNodes.item(field).toElement().setAttribute(attr, value);
-//                break;
-//            }
-//        }
-//    }
-
-//    // Save to file
-//    QFile xmlFile(_fileName);
-//    if (xmlFile.open(QIODevice::WriteOnly))
-//    {
-//        QTextStream stream(&xmlFile);
-//        m_xmlData.save(stream, 0);
-//        xmlFile.close();
-//    }
 }

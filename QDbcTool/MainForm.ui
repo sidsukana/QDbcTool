@@ -64,16 +64,16 @@
          <bool>false</bool>
         </property>
         <attribute name="verticalHeaderVisible">
-         <bool>true</bool>
+         <bool>false</bool>
+        </attribute>
+        <attribute name="verticalHeaderMinimumSectionSize">
+         <number>15</number>
         </attribute>
         <attribute name="verticalHeaderDefaultSectionSize">
          <number>17</number>
         </attribute>
         <attribute name="verticalHeaderHighlightSections">
          <bool>false</bool>
-        </attribute>
-        <attribute name="verticalHeaderMinimumSectionSize">
-         <number>15</number>
         </attribute>
         <attribute name="verticalHeaderShowSortIndicator" stdset="0">
          <bool>false</bool>
@@ -100,6 +100,7 @@
     <addaction name="actionOpen"/>
     <addaction name="separator"/>
     <addaction name="actionExport_as_JSON"/>
+    <addaction name="actionExport_as_JSON_with_hiddens"/>
     <addaction name="actionExport_as_SQL"/>
     <addaction name="actionExport_as_CSV"/>
     <addaction name="actionWrite_DBC"/>
@@ -164,6 +165,11 @@
   <action name="actionExport_as_JSON">
    <property name="text">
     <string>Export as JSON</string>
+   </property>
+  </action>
+  <action name="actionExport_as_JSON_with_hiddens">
+   <property name="text">
+    <string>Export as JSON (with hiddens)</string>
    </property>
   </action>
  </widget>

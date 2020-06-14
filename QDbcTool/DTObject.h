@@ -45,7 +45,7 @@ class DTObject : public QObject
         DBCTableModel* getModel() const { return _model; }
 
         // Export methods
-        void exportAsJSON();
+        void exportAsJSON(bool withHiden);
         void exportAsSQL();
         void exportAsCSV();
         void writeDBC();
@@ -73,6 +73,7 @@ class DTObject : public QObject
 
 struct DBCField
 {
+    DBCField() : hiden(false), custom(false), arrayExport(false) {}
     QString name;
     QString type;
     bool hiden;
@@ -102,7 +103,6 @@ class DBCFormat
         char getFieldType(quint32 field) const { return _fields.at(field).type.at(0).toLatin1(); }
         QString getFieldName(quint32 field) const { return _fields.at(field).name; }
         QString getFieldRef(quint32 field) const { return _fields.at(field).ref; }
-        void setFieldAttribute(quint32 field, QString attr, QString value);
 
         QJsonDocument getJson() const { return _json; }
 

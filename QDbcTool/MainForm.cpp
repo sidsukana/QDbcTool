@@ -55,6 +55,7 @@ MainForm::MainForm(QWidget *parent)
 
     // Export actions
     connect(actionExport_as_JSON, SIGNAL(triggered()), this, SLOT(slotExportAsJSON()));
+    connect(actionExport_as_JSON_with_hiddens, SIGNAL(triggered()), this, SLOT(slotExportAsJSONwithHiddens()));
     connect(actionExport_as_SQL, SIGNAL(triggered()), this, SLOT(slotExportAsSQL()));
     connect(actionExport_as_CSV, SIGNAL(triggered()), this, SLOT(slotExportAsCSV()));
 
@@ -154,12 +155,10 @@ void MainForm::slotSetVisible(QAction* action)
 {
     if (action->isChecked())
     {
-        format->setFieldAttribute(action->data().toUInt(), "visible", "false");
         tableView->hideColumn(action->data().toUInt());
     }
     else
     {
-        format->setFieldAttribute(action->data().toUInt(), "visible", "true");
         tableView->showColumn(action->data().toUInt());
     }
 }
@@ -223,7 +222,25 @@ void MainForm::slotExportAsJSON()
             dbc->setSaveFileName(fileName);
             statusText->setText("Exporting to JSON file...");
             if (!_watcher.isRunning())
-                _watcher.setFuture(QtConcurrent::run(dbc, &DTObject::exportAsJSON));
+                _watcher.setFuture(QtConcurrent::run(dbc, &DTObject::exportAsJSON, false));
+        }
+    }
+    else
+        statusText->setText("DBC not loaded! Please load DBC file!");
+}
+
+void MainForm::slotExportAsJSONwithHiddens()
+{
+    if (!dbc->isEmpty())
+    {
+        QString fileName = QFileDialog::getSaveFileName(this, "Save as JSON file", ".", "JSON File (*.json)");
+
+        if (!fileName.isEmpty())
+        {
+            dbc->setSaveFileName(fileName);
+            statusText->setText("Exporting to JSON file...");
+            if (!_watcher.isRunning())
+                _watcher.setFuture(QtConcurrent::run(dbc, &DTObject::exportAsJSON, true));
         }
     }
     else
@@ -427,7 +444,7 @@ QVariant DBCTableModel::headerData(int section, Qt::Orientation orientation, int
     return QVariant();
 }
 
-QStringList DBCTableModel::getRecord(quint32 row) const
+QStringList DBCTableModel::getRecord(qint32 row) const
 {
     if (row < 0 || row >= m_dbcList.size())
         return QStringList();

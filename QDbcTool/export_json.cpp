@@ -5,7 +5,7 @@
 
 #include "DTObject.h"
 
-void DTObject::exportAsJSON()
+void DTObject::exportAsJSON(bool withHiden)
 {
     if (!_model)
         return;
@@ -20,23 +20,23 @@ void DTObject::exportAsJSON()
     QList<QStringList> dbcList = _model->getDbcList();
     emit loadingStart(dbcList.size());
 
-    auto hasNextArrayField = [&](QString& arrayField, quint32 pos) {
-      for (quint32 i = pos + 1; i < _format->getFieldCount(); ++i)
-          if (_format->isArrayExport(i) && _format->getFieldName(i).chopped(1) == arrayField)
-              return true;
-      return false;
+    auto isNeedCloseArray = [&](quint32 pos) {
+        quint32 nextIndex = pos + 1;
+        return (nextIndex >= _format->getFieldCount() ||
+                (_format->getFieldName(nextIndex).chopped(1) !=
+                 _format->getFieldName(pos).chopped(1)));
     };
 
     auto hasNextVisibleField = [&](quint32 pos) {
       for (quint32 i = pos + 1; i < _format->getFieldCount(); ++i)
-          if (!_format->isHiden(i))
+          if (withHiden || !_format->isHiden(i))
               return true;
       return false;
     };
 
-    auto hasNextVisibleFieldRef = [](DBCFormat* fmt, quint32 size, quint32 pos) {
+    auto hasNextVisibleFieldRef = [&](DBCFormat* fmt, quint32 size, quint32 pos) {
       for (quint32 i = pos + 1; i < size; ++i)
-          if (!fmt->isHiden(i))
+          if (withHiden || !fmt->isHiden(i))
               return true;
       return false;
     };
@@ -67,7 +67,7 @@ void DTObject::exportAsJSON()
     };
 
     QHash<QString, QPair<DTObject*, DBCFormat*>> refs;
-
+    stream << "[ ";
     for (quint32 i = 0; i < _dbc->m_recordCount; i++)
     {
         QStringList dataList = dbcList.at(i);
@@ -77,7 +77,7 @@ void DTObject::exportAsJSON()
         stream << "{ ";
         for (quint32 j = 0; j < _format->getFieldCount(); j++)
         {
-            if (_format->isHiden(j))
+            if (!withHiden && _format->isHiden(j))
                 continue;
 
             if (!arrayExport)
@@ -91,26 +91,6 @@ void DTObject::exportAsJSON()
                 else
                 {
                     stream << "\"" << _format->getFieldName(j) << "\": ";
-                }
-            }
-            else
-            {
-                if (_format->isArrayExport(j))
-                {
-                    if (_format->getFieldName(j).chopped(1) != arrayField)
-                    {
-                        arrayField = _format->getFieldName(j).chopped(1);
-                        stream << " ], \"" << arrayField << "\": [ ";
-                    }
-                    else
-                    {
-                        stream << ", ";
-                    }
-                }
-                else
-                {
-                    arrayExport = false;
-                    stream << " ], \"" << _format->getFieldName(j) << "\": ";
                 }
             }
 
@@ -163,9 +143,9 @@ void DTObject::exportAsJSON()
                         continue;
                     }
 
-                    for (quint32 k = 0; k < dataListRef.size(); ++k)
+                    for (qint32 k = 0; k < dataListRef.size(); ++k)
                     {
-                        if (fmtRef->isHiden(k))
+                        if (!withHiden && fmtRef->isHiden(k))
                             continue;
 
                         stream << "\"" << fmtRef->getFieldName(k) << "\": ";
@@ -194,14 +174,28 @@ void DTObject::exportAsJSON()
             else
             {
                 writeToStream(j, dataList, arrayExport);
+                if (arrayExport) {
+                    QString endl = hasNextVisibleField(j) ? ", " : "";
+                    if (isNeedCloseArray(j)) {
+                        stream << " ]" << endl;
+                        arrayExport = false;
+                    } else {
+                        stream << endl;
+                    }
+                }
             }
         }
 
-        stream << " }\n";
+        if (i + 1 == _dbc->m_recordCount) {
+            stream << " }\n";
+        } else {
+            stream << " },\n";
+        }
 
         step++;
         emit loadingStep(step);
     }
+    stream << "] ";
 
     exportFile.close();
 
